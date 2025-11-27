@@ -1,9 +1,9 @@
 
 from fastapi import FastAPI
 
-
 from app.core.config import config
 from app.core.logging import setup_logging
+
 from app.router.tool import router as tool_router
 
 logging = setup_logging()
@@ -13,6 +13,7 @@ app = FastAPI(
   debug=config.debug,
   logging=logging
 )
+
 
 app.include_router(tool_router)
 

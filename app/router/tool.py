@@ -1,36 +1,41 @@
+from typing import Union
+
 from fastapi import APIRouter, Depends
 
-from app.router.dependencies import get_tool_repository
+from app.router.dependencies import get_tool_repository, get_tool_service, get_tool_filters
 from app.repositories import ToolRepository
-from app.schemas.tool import SessionMetrics, Tool, ToolsListResponse, ToolDetailResponse, UsageMetrics
+from app.services import ToolService
+
+from app.schemas import NoResultsFoundResponse, NotFoundResponse, SessionMetrics, Tool, ToolsListResponse, ToolDetailResponse, UsageMetrics, ToolFilters
+
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
-
-@router.get("")
+@router.get(
+    "",
+    response_model=Union[ToolsListResponse, NoResultsFoundResponse]
+)
 async def get_tools(
-  tool_repository: ToolRepository = Depends(get_tool_repository)
+    tool_service: ToolService = Depends(get_tool_service),
+    filters: ToolFilters = Depends(get_tool_filters),
 ):
-    tool_models = tool_repository.list_tools()
-
-    tools = [Tool.model_validate(tool_model) for tool_model in tool_models]
-    
-    response = ToolsListResponse(
-        data=tools,
-        total=len(tools),
-        filtered=len(tools),
-        filters_applied={}
-    )
-    
-    return response
+    """Récupère la liste des outils avec filtres et tri."""
+    return tool_service.list_tools(filters)
 
 
-@router.get("/{tool_id}")
+@router.get(
+    "/{tool_id}",
+    response_model=Union[ToolDetailResponse, NotFoundResponse]
+)
 async def get_tool(
   tool_id: int,
   tool_repository: ToolRepository = Depends(get_tool_repository)
 ):
     tool_model = tool_repository.get_tool(tool_id)
+
+    if not tool_model:
+        return NotFoundResponse()
+    
     tool = Tool.model_validate(tool_model)
 
     usage_metrics = UsageMetrics(
