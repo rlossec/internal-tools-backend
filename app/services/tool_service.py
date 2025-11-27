@@ -4,8 +4,8 @@ import math
 from fastapi import HTTPException, status
 
 from app.repositories import ToolRepository
-from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics, ToolCreateRequest, ToolCreateResponse
-from app.models.enum_types import DepartmentType
+from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
+from app.models.enum_types import DepartmentType, ToolStatus
 
 
 class ToolService:
@@ -16,7 +16,7 @@ class ToolService:
     
     def create_tool(self, tool_data: ToolCreateRequest) -> ToolCreateResponse:
         """Crée un nouvel outil."""
-
+        
         department = DepartmentType(tool_data.owner_department)
 
         try:
@@ -39,13 +39,73 @@ class ToolService:
         # Convertir en ToolCreateResponse
         return ToolCreateResponse.model_validate(tool_model)
     
-    def get_tool(self, tool_id: int) -> ToolDetailResponse | NotFoundResponse:
+    def update_tool(self, tool_id: int, tool_data: ToolUpdateRequest) -> ToolUpdateResponse:
+        """Met à jour un outil existant."""
+        # Récupérer les champs explicitement fournis (exclure ceux non fournis)
+        provided_fields = tool_data.model_dump(exclude_unset=True)
+        
+        # Convertir enums si fournis
+        owner_department_enum = ...
+        if "owner_department" in provided_fields:
+            if provided_fields["owner_department"] is not None:
+                owner_department_enum = DepartmentType(provided_fields["owner_department"])
+            else:
+                owner_department_enum = None  # Explicitement fourni comme None
+        
+        status_enum = ...
+        if "status" in provided_fields:
+            if provided_fields["status"] is not None:
+                status_enum = ToolStatus(provided_fields["status"])
+            else:
+                status_enum = None  # Explicitement fourni comme None
+        
+        # Préparer les paramètres pour le repository
+        name = provided_fields.get("name", ...) if "name" in provided_fields else ...
+        description = provided_fields.get("description", ...) if "description" in provided_fields else ...
+        vendor = provided_fields.get("vendor", ...) if "vendor" in provided_fields else ...
+        website_url = provided_fields.get("website_url", ...) if "website_url" in provided_fields else ...
+        category_id = provided_fields.get("category_id", ...) if "category_id" in provided_fields else ...
+        monthly_cost = provided_fields.get("monthly_cost", ...) if "monthly_cost" in provided_fields else ...
+        
+        # Mettre à jour via le repository
+        try:
+            tool_model = self._repository.update_tool(
+                tool_id=tool_id,
+                name=name,
+                description=description,
+                vendor=vendor,
+                website_url=website_url,
+                category_id=category_id,
+                monthly_cost=monthly_cost,
+                owner_department=owner_department_enum,
+                status=status_enum,
+            )
+        except ValueError as e:
+            # Erreur de catégorie inexistante
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e)
+            )
+        
+        if not tool_model:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Tool with id {tool_id} not found"
+            )
+        
+        # Convertir en ToolUpdateResponse
+        return ToolUpdateResponse.model_validate(tool_model)
+    
+    def get_tool(self, tool_id: int) -> ToolDetailResponse:
         """Récupère un outil par son ID."""
         tool_model = self._repository.get_tool(tool_id)
         
         if not tool_model:
-            return NotFoundResponse()
-        
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Tool with id {tool_id} not found"
+            )
+
         tool = Tool.model_validate(tool_model)
         
         # Calcul des métriques d'utilisation (30 derniers jours)

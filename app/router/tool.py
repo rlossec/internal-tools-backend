@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from app.router.dependencies import get_tool_service, get_tool_filters
 from app.services import ToolService
 
-from app.schemas import NoResultsFoundResponse, NotFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters, ToolCreateRequest, ToolCreateResponse
+from app.schemas import NoResultsFoundResponse, NotFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
 
 
 router = APIRouter(prefix="/tools", tags=["tools"])
@@ -35,9 +35,23 @@ async def create_tool(
     return tool_service.create_tool(tool_data)
 
 
+@router.put(
+    "/{tool_id}",
+    response_model=ToolUpdateResponse,
+    status_code=status.HTTP_200_OK
+)
+async def update_tool(
+    tool_id: int,
+    tool_data: ToolUpdateRequest,
+    tool_service: ToolService = Depends(get_tool_service),
+):
+    """Met à jour un outil existant."""
+    return tool_service.update_tool(tool_id, tool_data)
+
+
 @router.get(
     "/{tool_id}",
-    response_model=Union[ToolDetailResponse, NotFoundResponse]
+    response_model=ToolDetailResponse
 )
 async def get_tool(
   tool_id: int,

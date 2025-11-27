@@ -7,7 +7,7 @@ Ce dossier contient tous les tests de l'application. La structure des tests suit
 ```
 tests/
 ├── conftest.py           # Fixtures partagées pour tous les tests
-├── router/               # Tests pour les endpoints (routes)
+├── router/               # Tests pour les endpoints
 │   └── tool/             # Tests pour les endpoints /tools
 └── README.md             # Ce fichier
 ```
@@ -31,6 +31,11 @@ Les fixtures sont définies dans `conftest.py` à la racine du dossier `tests/` 
 
 - **`test_tools`** : Crée 5 outils de test avec différentes caractéristiques
   - Voir la section [Données de test](#données-de-test) ci-dessous
+- **`test_user`** : Crée un utilisateur de test pour les logs d'utilisation
+  - Utilisé pour tester les métriques d'utilisation des outils
+- **`test_usage_logs`** : Crée des logs d'utilisation de test
+  - 5 logs avec différentes dates (récents et anciens)
+  - Utilisé pour tester le calcul des métriques d'utilisation
 
 ### Fixtures d'application
 

@@ -221,18 +221,7 @@ class TestRetrieveToolEndpoint:
         for field in required_fields:
             assert field in data, f"Le champ '{field}' est manquant dans la réponse"
     
-    # 200 - Not Found (retourne NotFoundResponse)
-    def test_get_tool_not_found(self, client):
-        """Test avec un ID d'outil inexistant."""
-        response = client.get("/tools/999")
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        # Vérifier la structure de NotFoundResponse
-        assert "message" in data
-        assert data["message"] == "No resource with the given id found"
-    
+    # 404 - Not Found (retourne NotFoundResponse)
     @pytest.mark.parametrize("invalid_id", [
         0,
         -1,
@@ -242,10 +231,10 @@ class TestRetrieveToolEndpoint:
         """Test avec différents IDs inexistants."""
         response = client.get(f"/tools/{invalid_id}")
         
-        assert response.status_code == 200
+        assert response.status_code == 404
         data = response.json()
-        assert "message" in data
-        assert data["message"] == "No resource with the given id found"
+        assert "detail" in data
+        assert "not found" in data["detail"].lower()
     
     # 422 - Validation errors
     @pytest.mark.parametrize("invalid_tool_id, expected_status", [

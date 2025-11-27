@@ -126,5 +126,54 @@ class ToolRepository:
         self._db.refresh(tool)
         
         return tool
+    
+    def update_tool(
+        self,
+        tool_id: int,
+        name: Optional[str] = ...,
+        description: Optional[str] = ...,
+        vendor: Optional[str] = ...,
+        website_url: Optional[str] = ...,
+        category_id: Optional[int] = ...,
+        monthly_cost: Optional[float] = ...,
+        owner_department: Optional[DepartmentType] = ...,
+        status: Optional[ToolStatus] = ...,
+    ) -> Optional[ToolModel]:
+        """Met à jour un outil existant."""
+        tool = self._db.query(ToolModel).filter(ToolModel.id == tool_id).first()
+        if not tool:
+            raise ValueError(f"Tool with id {tool_id} not found")
+        
+        # Vérifier que la catégorie existe si category_id est fourni
+        if category_id is not ...:
+            category = self._db.query(Category).filter(Category.id == category_id).first()
+            if not category:
+                raise ValueError(f"Category with id {category_id} not found")
+        
+        # Mettre à jour uniquement les champs fournis (utiliser Ellipsis pour détecter les champs non fournis)
+        if name is not ...:
+            tool.name = name
+        if description is not ...:
+            tool.description = description
+        if vendor is not ...:
+            tool.vendor = vendor
+        if website_url is not ...:
+            tool.website_url = website_url
+        if category_id is not ...:
+            tool.category_id = category_id
+        if monthly_cost is not ...:
+            tool.monthly_cost = monthly_cost
+        if owner_department is not ...:
+            tool.owner_department = owner_department
+        if status is not ...:
+            tool.status = status
+        
+        # Mettre à jour updated_at
+        tool.updated_at = datetime.now()
+        
+        self._db.commit()
+        self._db.refresh(tool)
+        
+        return tool
 
     
