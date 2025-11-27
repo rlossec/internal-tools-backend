@@ -8,7 +8,7 @@ Ce dossier contient les tests pour tous les endpoints liés aux outils (`/tools`
 tests/router/tool/
 ├── __init__.py
 ├── test_list_tool.py          # Tests pour GET /tools
-├── test_get_tool.py           # Tests pour GET /tools/{tool_id}   [À venir]
+├── test_retrieve_tool.py      # Tests pour GET /tools/{tool_id}
 ├── test_create_tool.py        # Tests pour POST /tools (création) [À venir]
 └── README.md                  # Ce fichier
 ```
@@ -17,9 +17,9 @@ tests/router/tool/
 
 ```bash
 pytest tests/router/tool/
-pytest tests/router/tool/list_tool.py   # Tests pour GET /tools
-pytest tests/router/tool/get_tool.py    # Tests pour GET /tools/{tool_id}
-pytest tests/router/tool/create_tool.py # Tests pour POST /tools
+pytest tests/router/tool/test_list_tool.py   # Tests pour GET /tools
+pytest tests/router/tool/test_retrieve_tool.py    # Tests pour GET /tools/{tool_id}
+pytest tests/router/tool/test_create_tool.py # Tests pour POST /tools
 ```
 
 ---
@@ -111,24 +111,58 @@ L'endpoint supporte :
 
 ## GET /tools/{tool_id} - Détail d'un outil
 
-**Fichier :** `test_get_tool.py` [À venir]
+**Fichier :** `test_retrieve_tool.py`
 
 Tests pour l'endpoint `GET /tools/{tool_id}` qui permet de récupérer les détails d'un outil spécifique.
 
-### Tests à implémenter
+**Total : 23 tests** couvrant tous les cas d'usage, les métriques d'utilisation et les cas limites.
 
-- [ ] `test_get_tool_success` : Récupération réussie d'un outil existant
-- [ ] `test_get_tool_not_found` : Outil inexistant (404)
-- [ ] `test_get_tool_invalid_id` : ID invalide (non numérique)
-- [ ] `test_get_tool_response_structure` : Vérification de la structure de la réponse
-- [ ] `test_get_tool_with_usage_metrics` : Vérification des métriques d'utilisation
-- [ ] `test_get_tool_with_cost_tracking` : Vérification du suivi des coûts
+### Fonctionnalités
+
+L'endpoint retourne :
+
+- **Informations de base** : id, name, description, vendor, website_url, category, monthly_cost, owner_department, status, active_users_count
+- **Coût total mensuel** : calculé automatiquement (`monthly_cost * active_users_count`)
+- **Métriques d'utilisation** : statistiques des 30 derniers jours (total_sessions, avg_session_minutes)
+- **Dates** : created_at, updated_at
+
+### Tests des succès - 200
+
+- `test_get_tool_success` : Récupération réussie d'un outil existant avec vérification de tous les champs
+- `test_get_tool_total_monthly_cost_calculation` : Vérification du calcul du coût total mensuel
+- `test_get_tool_different_tools` : Test paramétré pour différents outils avec leurs coûts calculés
+  - **5 outils testés** via `@pytest.mark.parametrize` (GitHub, Slack, Jira, Figma, Deprecated Tool)
+- `test_get_tool_response_fields` : Vérification que tous les champs requis sont présents
+
+#### Tests des métriques d'utilisation
+
+- `test_get_tool_usage_metrics_structure` : Vérification de la structure des métriques d'utilisation
+- `test_get_tool_usage_metrics_without_logs` : Métriques retournent 0 quand il n'y a pas de logs
+- `test_get_tool_usage_metrics_with_logs` : Calcul correct des métriques avec des logs réels
+  - Vérifie le calcul de `total_sessions` et `avg_session_minutes`
+- `test_get_tool_usage_metrics_filters_old_logs` : Les logs de plus de 30 jours sont exclus
+- `test_get_tool_usage_metrics_different_tools` : Isolation des métriques par outil
+- `test_get_tool_usage_metrics_single_session` : Calcul correct avec une seule session
+- `test_get_tool_usage_metrics_zero_minutes` : Gestion des sessions avec 0 minutes (cas limite)
+
+### Tests Not Found - 200 (NotFoundResponse)
+
+- `test_get_tool_not_found` : Outil inexistant retourne NotFoundResponse
+- `test_get_tool_not_found_scenarios` : Test paramétré pour différents IDs inexistants
+  - **3 scénarios testés** via `@pytest.mark.parametrize` (0, -1, 999999)
+
+### Tests de validation d'erreurs (422)
+
+- `test_get_tool_invalid_id_type` : Test paramétré pour IDs invalides (non numériques)
+  - IDs non numériques : "not_a_number", "abc", "1.5"
+  - Chaîne vide : redirige vers `/tools` (307)
+  - **4 cas testés** via `@pytest.mark.parametrize`
 
 ---
 
 ## POST /tools - Création d'un outil
 
-**Fichier :** `create_tool.py` [À venir]
+**Fichier :** `test_create_tool.py` [À venir]
 
 Tests pour l'endpoint `POST /tools` qui permet de créer un nouvel outil.
 

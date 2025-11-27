@@ -27,7 +27,7 @@ async def get_tools(
     response_model=Union[ToolDetailResponse, NotFoundResponse]
 )
 async def get_tool(
-    tool_id: int,
+  tool_id: int,
     tool_service: ToolService = Depends(get_tool_service),
 ):
     """Récupère les détails d'un outil par son ID."""

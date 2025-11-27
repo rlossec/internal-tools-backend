@@ -1,8 +1,10 @@
+from datetime import datetime, timedelta
 import math
 
-from app.repositories import ToolRepository
-from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse
+from fastapi import HTTPException, status
 
+from app.repositories import ToolRepository
+from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics
 
 class ToolService:
     """Service pour la logique métier des outils."""
@@ -17,18 +19,13 @@ class ToolService:
         if not tool_model:
             return NotFoundResponse()
         
-        # TODO: Implémenter la logique métier pour usage_metrics et total_monthly_cost
-        # Pour l'instant, valeurs par défaut
-        from app.schemas import UsageMetrics, SessionMetrics
-        
         tool = Tool.model_validate(tool_model)
-        usage_metrics = UsageMetrics(
-            last_30_days=SessionMetrics(
-                total_sessions=0,
-                avg_session_minutes=0
-            )
-        )
-        total_monthly_cost = 0
+        
+        # Calcul des métriques d'utilisation (30 derniers jours)
+        usage_metrics = self.get_tool_usage_metrics_last_days(tool_id, days_number=30)
+        
+        # Calcul du coût total mensuel
+        total_monthly_cost = self.get_tool_total_monthly_cost(tool_id)
         
         return ToolDetailResponse(
             **tool.model_dump(),
@@ -67,3 +64,51 @@ class ToolService:
             pagination=pagination
         )
 
+    def get_tool_total_monthly_cost(self, tool_id: int) -> float:
+        """
+        Calcule le coût total mensuel d'un outil.
+        
+        Formule : monthly_cost * active_users_count
+        """
+        tool = self._repository.get_tool(tool_id)
+        if not tool:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tool not found"
+            )
+
+        total_monthly_cost = float(tool.monthly_cost) * tool.active_users_count
+        
+        return total_monthly_cost
+    
+    def get_tool_usage_metrics_last_days(self, tool_id: int, days_number: int) -> UsageMetrics:
+        """
+        Récupère les métriques d'utilisation d'un outil pour les N derniers jours.
+        """
+        tool = self._repository.get_tool(tool_id)
+        if not tool:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tool not found"
+            )
+
+        usage_logs = self._repository.get_tool_usage_logs(tool_id)
+        # Filtrer les logs des N derniers jours
+        # FAKE_DATE = date(2025, 6, 1) pour les tests
+        cutoff_date = datetime.now().date() - timedelta(days=days_number)
+        filtered_logs = [
+            log for log in usage_logs 
+            if log.session_date >= cutoff_date
+        ]
+        total_sessions = len(filtered_logs)
+        total_minutes = sum(log.usage_minutes for log in filtered_logs)
+        
+        # Éviter la division par zéro
+        avg_session_minutes = total_minutes / total_sessions if total_sessions > 0 else 0
+        
+        return UsageMetrics(
+            last_30_days=SessionMetrics(
+                total_sessions=total_sessions,
+                avg_session_minutes=int(avg_session_minutes)
+            )
+        )

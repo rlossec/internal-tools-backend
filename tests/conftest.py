@@ -8,7 +8,9 @@ from fastapi.testclient import TestClient
 from app.db.database import Base
 from app.models.tool import Tool
 from app.models.category import Category
-from app.models.enum_types import DepartmentType, ToolStatus
+from app.models.usage_log import UsageLog
+from app.models.user import User
+from app.models.enum_types import DepartmentType, ToolStatus, UserRole, UserStatus
 
 from app.repositories.tool_repository import ToolRepository
 from app.services.tool_service import ToolService
@@ -162,6 +164,93 @@ def test_tools(db_session, test_categories):
         db_session.refresh(tool)
     
     return tools
+
+
+@pytest.fixture(scope="function")
+def test_user(db_session):
+    """Crée un utilisateur de test pour les logs d'utilisation."""
+    user = User(
+        id=1,
+        name="Test User",
+        email="test@example.com",
+        department=DepartmentType.Engineering,
+        role=UserRole.employee,
+        status=UserStatus.active,
+        created_at=datetime.now()
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def test_usage_logs(db_session, test_tools, test_user):
+    """Crée des logs d'utilisation de test pour tester les métriques."""
+    from datetime import date, timedelta
+    
+    # Date de référence : aujourd'hui
+    today = date.today()
+    
+    usage_logs = [
+        # Logs récents (dans les 30 derniers jours)
+        UsageLog(
+            id=1,
+            user_id=test_user.id,
+            tool_id=test_tools[0].id,  # GitHub
+            session_date=today - timedelta(days=5),
+            usage_minutes=120,
+            actions_count=50,
+            created_at=datetime.now()
+        ),
+        UsageLog(
+            id=2,
+            user_id=test_user.id,
+            tool_id=test_tools[0].id,  # GitHub
+            session_date=today - timedelta(days=10),
+            usage_minutes=90,
+            actions_count=30,
+            created_at=datetime.now()
+        ),
+        UsageLog(
+            id=3,
+            user_id=test_user.id,
+            tool_id=test_tools[0].id,  # GitHub
+            session_date=today - timedelta(days=15),
+            usage_minutes=60,
+            actions_count=20,
+            created_at=datetime.now()
+        ),
+        # Logs anciens (hors des 30 derniers jours)
+        UsageLog(
+            id=4,
+            user_id=test_user.id,
+            tool_id=test_tools[0].id,  # GitHub
+            session_date=today - timedelta(days=35),
+            usage_minutes=200,
+            actions_count=100,
+            created_at=datetime.now()
+        ),
+        # Logs pour un autre outil (Slack)
+        UsageLog(
+            id=5,
+            user_id=test_user.id,
+            tool_id=test_tools[1].id,  # Slack
+            session_date=today - timedelta(days=7),
+            usage_minutes=180,
+            actions_count=60,
+            created_at=datetime.now()
+        ),
+    ]
+    
+    for log in usage_logs:
+        db_session.add(log)
+    db_session.commit()
+    
+    for log in usage_logs:
+        db_session.refresh(log)
+    
+    return usage_logs
 
 
 @pytest.fixture

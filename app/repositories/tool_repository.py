@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.orm import Session
 
 from app.models.tool import Tool as ToolModel
 from app.models.category import Category
+from app.models.usage_log import UsageLog
 from app.models.enum_types import DepartmentType, ToolStatus
 from app.schemas.tool import ToolFilters, SortToolField
 from app.schemas.common import SortOrder
@@ -88,4 +89,7 @@ class ToolRepository:
     def get_tool(self, tool_id: int) -> ToolModel:
         return self._db.query(ToolModel).filter(ToolModel.id == tool_id).first()
 
-    
+    def get_tool_usage_logs(self, tool_id: int) -> List[UsageLog]:
+        """Récupère tous les logs d'utilisation pour un outil donné."""
+        return self._db.query(UsageLog).filter(UsageLog.tool_id == tool_id).all()
+
