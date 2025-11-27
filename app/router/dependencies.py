@@ -26,7 +26,7 @@ def get_tool_filters(
     category: Optional[str] = Query(None, description="Filtrer par catégorie"),
     vendor: Optional[str] = Query(None, description="Filtrer par vendeur"),
     department: Optional[str] = Query(None, description="Filtrer par département"),
-    status: Optional[str] = Query(None, description="Filtrer par statut"),
+    tool_status: Optional[str] = Query(None, description="Filtrer par statut", alias="status"),
     max_cost: Optional[float] = Query(None, description="Coût maximum", ge=0),
     min_cost: Optional[float] = Query(None, description="Coût minimum", ge=0),
     sort_by: Optional[SortToolField] = Query(None, description="Champ de tri"),
@@ -38,7 +38,7 @@ def get_tool_filters(
             category=category,
             vendor=vendor,
             department=department,
-            status=status,
+            status=tool_status,
             max_cost=max_cost,
             min_cost=min_cost,
             sort_by=sort_by,
@@ -55,7 +55,7 @@ def get_tool_filters(
                 "type": error["type"],
             })
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "detail": "Erreur de validation",
                 "errors": errors

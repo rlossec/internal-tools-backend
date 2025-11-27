@@ -91,6 +91,15 @@ class TestGetToolsEndpoint:
         assert all(30 <= tool["monthly_cost"] <= 75 for tool in data["data"])
         assert data["filtered"] == 3
     
+    def test_get_tools_partial_vendor_match(self, client):
+        """Test que le filtre de vendeur accepte des correspondances partielles."""
+        response = client.get("/tools?vendor=Tech")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 1
+        assert data["data"][0]["name"] == "Slack"
+    
     @pytest.mark.parametrize("query_params, expected_count, expected_names", [
         # Test 1: Engineering + active + min_cost 50
         ("department=Engineering&status=active&min_cost=50", 1, ["GitHub"]),
@@ -177,6 +186,15 @@ class TestGetToolsEndpoint:
         # Vérifier le premier élément par son nom (plus lisible)
         assert data["data"][0]["name"] == expected_first_name, \
             f"Le premier élément devrait être '{expected_first_name}', mais c'est '{data['data'][0]['name']}'"
+    
+    def test_get_tools_default_sort(self, client):
+        """Test que le tri par défaut est par ID croissant."""
+        response = client.get("/tools")
+        
+        assert response.status_code == 200
+        data = response.json()
+        ids = [tool["id"] for tool in data["data"]]
+        assert ids == sorted(ids)
 
     @pytest.mark.parametrize("query_params, sort_by, sort_order, expected_first_name, expected_first_value, check_field", [
         # Test 1: active + tri par coût décroissant
@@ -244,10 +262,14 @@ class TestGetToolsEndpoint:
         assert "message" in data
         assert data["message"] == "No results found"
     
-    # Ignored invalid department
-    def test_get_tools_invalid_department(self, client):
-        """Test avec un département invalide (doit être ignoré)."""
-        response = client.get("/tools?department=InvalidDepartment")
+    # Ignored invalid filters
+    @pytest.mark.parametrize("query_params, filter_type", [
+        ("department=InvalidDepartment", "department"),
+        ("status=invalid_status", "status"),
+    ])
+    def test_get_tools_invalid_filters_ignored(self, client, query_params, filter_type):
+        """Test que les filtres invalides sont ignorés silencieusement."""
+        response = client.get(f"/tools?{query_params}")
         
         assert response.status_code == 200
         data = response.json()
@@ -278,4 +300,84 @@ class TestGetToolsEndpoint:
             data = response.json()
             assert len(data["data"]) == expected_count
 
-    # 422
+    # 422 - Validation errors
+    @pytest.mark.parametrize("query_params, error_keyword, error_field", [
+        # Coûts négatifs - validation FastAPI Query
+        ("min_cost=-10", "greater than or equal to 0", "min_cost"),
+        ("max_cost=-5", "greater than or equal to 0", "max_cost"),
+        # Enums invalides - validation FastAPI Query
+        ("sort_by=invalid_field", None, "sort_by"),
+        ("sort_order=invalid", None, "sort_order"),
+    ])
+    def test_get_tools_query_validation_errors(self, client, query_params, error_keyword, error_field):
+        """Test des erreurs de validation FastAPI Query (paramètres de requête invalides)."""
+        response = client.get(f"/tools?{query_params}")
+        
+        assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
+        
+        data = response.json()
+        assert "detail" in data, f"Response should contain 'detail' field: {data}"
+        
+        # Vérifier le message d'erreur si spécifié
+        if error_keyword:
+            error_text = str(data).lower()
+            assert error_keyword.lower() in error_text, f"Expected '{error_keyword}' in error message, got: {data}"
+        
+        # Vérifier le champ en erreur si spécifié
+        if error_field and "errors" in data:
+            error_fields = [err.get("field", "") for err in data.get("errors", [])]
+            assert any(error_field in field for field in error_fields), \
+                f"Expected field '{error_field}' in errors: {error_fields}"
+    
+    def test_get_tools_pydantic_validation_error(self, client):
+        """Test des erreurs de validation Pydantic (logique métier, ex: min_cost > max_cost)."""
+        response = client.get("/tools?min_cost=100&max_cost=50")
+        
+        assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
+        
+        data = response.json()
+        assert "detail" in data, f"Response should contain 'detail' field: {data}"
+        
+        # La structure est {'detail': {'detail': '...', 'errors': [...]}}
+        detail = data["detail"]
+        if isinstance(detail, dict):
+            assert "errors" in detail, f"Response should contain 'errors' field for Pydantic validation: {data}"
+            assert len(detail["errors"]) > 0, "Errors array should not be empty"
+            
+            # Vérifier que le message d'erreur contient la validation métier
+            error_text = str(detail).lower()
+            assert "min_cost ne peut pas être supérieur à max_cost" in error_text or \
+                   ("min_cost" in error_text and "max_cost" in error_text), \
+                   f"Expected validation error message, got: {data}"
+    
+    # Response structure
+    def test_get_tools_filters_applied_in_response(self, client):
+        """Test que les filtres appliqués sont retournés dans la réponse."""
+        response = client.get("/tools?category=Development&vendor=GitHub&sort_by=name")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "filters_applied" in data
+        filters = data["filters_applied"]
+        assert filters["category"] == "Development"
+        assert filters["vendor"] == "GitHub"
+        assert filters["sort_by"] == "name"
+    
+    @pytest.mark.parametrize("query_params, expected_count", [
+        # Test 1: Tous les filtres vides
+        ("category=&vendor=&department=&status=", 5),
+        # Test 2: Certains filtres vides, d'autres non
+        ("category=&vendor=GitHub&department=&status=", 1),
+        # Test 3: Filtres vides avec tri
+        ("category=&vendor=&department=&status=&sort_by=name&sort_order=asc", 5),
+        # Test 4: Filtres None (pas de paramètres)
+        ("", 5),
+    ])
+    def test_get_tools_empty_filters(self, client, query_params, expected_count):
+        """Test avec différents scénarios de filtres vides."""
+        url = f"/tools?{query_params}" if query_params else "/tools"
+        response = client.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == expected_count
