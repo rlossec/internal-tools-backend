@@ -1,0 +1,26 @@
+# Virtual environment
+
+.venv/
+
+# Environment variables
+.env
+
+#
+back_env/
+
+# Python files
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyz
+*.pywz
+*.pyzw
+*.pyz
+*.pywz
+*.pyzw
