@@ -15,3 +15,6 @@ class ToolRepository:
         """Récupère tous les outils avec leurs relations via l'ORM."""
         query = self._db.query(ToolModel)
         return query.all()
+
+    def get_tool(self, tool_id: int) -> ToolModel:
+        return self._db.query(ToolModel).filter(ToolModel.id == tool_id).first()
