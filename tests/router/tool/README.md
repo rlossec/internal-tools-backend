@@ -17,9 +17,9 @@ tests/router/tool/
 
 ```bash
 pytest tests/router/tool/
-pytest tests/router/tool/test_list_tool.py   # Tests pour GET /tools
+pytest tests/router/tool/test_list_tool.py        # Tests pour GET /tools
 pytest tests/router/tool/test_retrieve_tool.py    # Tests pour GET /tools/{tool_id}
-pytest tests/router/tool/test_create_tool.py # Tests pour POST /tools
+pytest tests/router/tool/test_create_tool.py      # Tests pour POST /tools
 ```
 
 ---
@@ -162,20 +162,36 @@ L'endpoint retourne :
 
 ## POST /tools - Création d'un outil
 
-**Fichier :** `test_create_tool.py` [À venir]
+**Fichier :** `test_create_tool.py`
 
 Tests pour l'endpoint `POST /tools` qui permet de créer un nouvel outil.
 
-### Tests à implémenter
+**Total : 24 tests** couvrant tous les cas d'usage, les validations et les cas limites.
 
-- [ ] `test_create_tool_success` : Création réussie avec données valides
-- [ ] `test_create_tool_validation_errors` : Erreurs de validation (champs requis manquants)
-- [ ] `test_create_tool_invalid_category` : Catégorie inexistante
-- [ ] `test_create_tool_invalid_department` : Département invalide
-- [ ] `test_create_tool_invalid_status` : Statut invalide
-- [ ] `test_create_tool_duplicate_name` : Nom d'outil déjà existant (si applicable)
-- [ ] `test_create_tool_negative_cost` : Coût négatif (validation)
-- [ ] `test_create_tool_response_structure` : Vérification de la structure de la réponse
+### Tests des succès - 201
+
+- `test_create_tool_success` : Création réussie avec données valides
+- `test_create_tool_with_status` : Création avec un statut spécifique
+- `test_create_tool_minimal_data` : Création avec données minimales (champs optionnels omis)
+- `test_create_tool_different_departments` : Test paramétré pour différents départements
+  - **7 départements testés** via `@pytest.mark.parametrize` (Engineering, Sales, Marketing, HR, Finance, Operations, Design)
+- `test_create_tool_different_status` : Test paramétré pour différents statuts
+  - **3 statuts testés** via `@pytest.mark.parametrize` (active, trial, deprecated)
+- `test_create_tool_zero_cost` : Création avec un coût de 0 (gratuit)
+- `test_create_tool_response_structure` : Vérification de la structure de la réponse
+
+### Tests de validation d'erreurs (422)
+
+- `test_create_tool_validation_errors` : Test paramétré pour les erreurs de validation
+  - Champs requis manquants (`name`, `vendor`, `category_id`, `monthly_cost`, `owner_department`)
+  - Coût négatif (`monthly_cost < 0`)
+  - Département invalide (`owner_department` non valide)
+  - Statut invalide (`status` non valide)
+  - **8 cas testés** via `@pytest.mark.parametrize`
+
+### Tests Not Found - 404
+
+- `test_create_tool_invalid_category` : Catégorie inexistante retourne 404
 
 ---
 

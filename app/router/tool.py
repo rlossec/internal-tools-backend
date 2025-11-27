@@ -1,11 +1,11 @@
 from typing import Union
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from app.router.dependencies import get_tool_service, get_tool_filters
 from app.services import ToolService
 
-from app.schemas import NoResultsFoundResponse, NotFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters
+from app.schemas import NoResultsFoundResponse, NotFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters, ToolCreateRequest, ToolCreateResponse
 
 
 router = APIRouter(prefix="/tools", tags=["tools"])
@@ -20,6 +20,19 @@ async def get_tools(
 ):
     """Récupère la liste des outils avec filtres et tri."""
     return tool_service.list_tools(filters)
+
+
+@router.post(
+    "",
+    response_model=ToolCreateResponse,
+    status_code=status.HTTP_201_CREATED
+)
+async def create_tool(
+    tool_data: ToolCreateRequest,
+    tool_service: ToolService = Depends(get_tool_service),
+):
+    """Crée un nouvel outil."""
+    return tool_service.create_tool(tool_data)
 
 
 @router.get(

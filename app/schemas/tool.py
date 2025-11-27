@@ -2,21 +2,24 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Any, Optional
+
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from app.models import Category
 from app.schemas.common import SortOrder
+from app.models.enum_types import DepartmentType
 
 # List Tools
 class Tool(BaseModel): 
     id: int
     name: str
-    description: str
+    description: Optional[str] = None
     vendor: str
     category: str
     monthly_cost: float
     owner_department: str
     status: str
-    website_url: str
+    website_url: Optional[str] = None
     active_users_count: int
     created_at: datetime
     updated_at: datetime
@@ -128,11 +131,6 @@ class ToolsListResponse(BaseModel):
     pagination: Optional[PaginationInfo] = None
 
 
-
-
-
-
-
 # Retrieve Tool
 class SessionMetrics(BaseModel):
     total_sessions: int
@@ -146,9 +144,9 @@ class UsageMetrics(BaseModel):
 class ToolDetailResponse(BaseModel):
     id: int
     name: str
-    description: str
+    description: Optional[str] = None
     vendor: str
-    website_url: str
+    website_url: Optional[str] = None
     category: str
     monthly_cost: float
     owner_department: str
@@ -170,3 +168,101 @@ class ToolDetailResponse(BaseModel):
         if hasattr(v, 'name'):
             return v.name
         return str(v) if v else ""
+
+
+# Create Tool
+class ToolCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    vendor: str
+    website_url: Optional[str] = None
+    category_id: int
+    monthly_cost: float
+    owner_department: str
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        """Valide que le nom est est entre 2 et 100 caracteres."""
+        if len(v) < 2 or len(v) > 100:
+            raise ValueError("name doit avoir entre 2 et 100 caracteres")
+        return v
+
+    @field_validator('monthly_cost')
+    @classmethod
+    def validate_monthly_cost(cls, v):
+        """Valide que le coût mensuel est positif et avec maximum 2 decimales."""
+        if v < 0:
+            raise ValueError("monthly_cost doit être supérieur ou égal à 0")
+        # Vérifier le nombre de décimales en multipliant par 100 et vérifiant si c'est un entier
+        if abs(v * 100 - round(v * 100)) > 1e-10:
+            raise ValueError("monthly_cost doit avoir maximum 2 decimales")
+        return v
+    
+    @field_validator('owner_department')
+    @classmethod
+    def validate_department(cls, v):
+        """Valide que le département est valide."""
+        try:
+            DepartmentType(v)
+        except ValueError:
+            raise ValueError(f"owner_department doit être l'un de: {', '.join([d.value for d in DepartmentType])}")
+        return v
+    
+    @field_validator('website_url')
+    @classmethod
+    def validate_website_url(cls, v):
+        """Valide que l'URL du site web est valide."""
+        if v is None:
+            return v
+        if not v.startswith('http://') and not v.startswith('https://'):
+            raise ValueError("website_url doit commencer par http:// ou https://")
+        return v
+
+    @field_validator('category_id')
+    @classmethod
+    def validate_category_id(cls, v):
+        """Valide que category_id est un entier positif."""
+        if v is None:
+            return v
+        if not isinstance(v, int) or v <= 0:
+            raise ValueError("category_id doit être un entier positif")
+        return v
+
+    @field_validator('vendor')
+    @classmethod
+    def validate_vendor(cls, v):
+        """Valide que le vendor est entre 2 et 100 caracteres."""
+        if v is None:
+            return v
+        if len(v) < 2 or len(v) > 100:
+            raise ValueError("vendor doit avoir entre 2 et 100 caracteres")
+        return v
+
+
+class ToolCreateResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    vendor: str
+    website_url: Optional[str] = None
+    category: str
+    monthly_cost: float
+    owner_department: str
+    status: str
+    active_users_count: int
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator('category', mode='before')
+    @classmethod
+    def transform_category(cls, v):
+        """Transforme l'objet Category en string (nom de la catégorie)."""
+        if v is None:
+            return ""
+        if hasattr(v, 'name'):
+            return v.name
+        return str(v) if v else ""
+

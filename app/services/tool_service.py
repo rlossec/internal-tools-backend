@@ -4,13 +4,40 @@ import math
 from fastapi import HTTPException, status
 
 from app.repositories import ToolRepository
-from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics
+from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics, ToolCreateRequest, ToolCreateResponse
+from app.models.enum_types import DepartmentType
+
 
 class ToolService:
     """Service pour la logique métier des outils."""
     
     def __init__(self, tool_repository: ToolRepository):
         self._repository = tool_repository
+    
+    def create_tool(self, tool_data: ToolCreateRequest) -> ToolCreateResponse:
+        """Crée un nouvel outil."""
+
+        department = DepartmentType(tool_data.owner_department)
+
+        try:
+            tool_model = self._repository.create_tool(
+                name=tool_data.name,
+                description=tool_data.description,
+                vendor=tool_data.vendor,
+                website_url=tool_data.website_url,
+                category_id=tool_data.category_id,
+                monthly_cost=tool_data.monthly_cost,
+                owner_department=department,
+            )
+        except ValueError as e:
+
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e)
+            )
+        
+        # Convertir en ToolCreateResponse
+        return ToolCreateResponse.model_validate(tool_model)
     
     def get_tool(self, tool_id: int) -> ToolDetailResponse | NotFoundResponse:
         """Récupère un outil par son ID."""

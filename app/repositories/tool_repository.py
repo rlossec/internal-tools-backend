@@ -1,13 +1,11 @@
-from typing import List
+from typing import List, Optional
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.models.tool import Tool as ToolModel
-from app.models.category import Category
-from app.models.usage_log import UsageLog
+from app.models import Tool as ToolModel, Category, UsageLog
 from app.models.enum_types import DepartmentType, ToolStatus
-from app.schemas.tool import ToolFilters, SortToolField
-from app.schemas.common import SortOrder
+from app.schemas import ToolFilters, SortToolField, SortOrder
 
 
 class ToolRepository:
@@ -93,3 +91,40 @@ class ToolRepository:
         """Récupère tous les logs d'utilisation pour un outil donné."""
         return self._db.query(UsageLog).filter(UsageLog.tool_id == tool_id).all()
 
+    def create_tool(
+        self,
+        name: str,
+        description: Optional[str],
+        vendor: str,
+        website_url: Optional[str],
+        category_id: int,
+        monthly_cost: float,
+        owner_department: DepartmentType,
+    ) -> ToolModel:
+        """Crée un nouvel outil."""
+        # Vérifier que la catégorie existe
+        category = self._db.query(Category).filter(Category.id == category_id).first()
+        if not category:
+            raise ValueError(f"Category with id {category_id} not found")
+        
+        tool = ToolModel(
+            name=name,
+            description=description,
+            vendor=vendor,
+            website_url=website_url,
+            category_id=category_id,
+            monthly_cost=monthly_cost,
+            active_users_count=0,
+            owner_department=owner_department,
+            status=ToolStatus.active,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        self._db.add(tool)
+        self._db.commit()
+        self._db.refresh(tool)
+        
+        return tool
+
+    
