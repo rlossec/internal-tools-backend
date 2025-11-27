@@ -13,6 +13,7 @@ tests/router/
 │   ├── test_create_tool.py    # Tests pour POST /tools
 │   ├── test_update_tool.py    # Tests pour PUT /tools/{tool_id}
 │   └── README.md              # Documentation des tests /tools
+├── test_database_errors.py    # Tests pour les erreurs de base de données (tous endpoints)
 └── README.md
 ```
 
@@ -64,6 +65,9 @@ pytest tests/router/tool/test_create_tool.py
 
 # Tests pour PUT /tools/{tool_id}
 pytest tests/router/tool/test_update_tool.py
+
+# Tests pour les erreurs de base de données (tous endpoints)
+pytest tests/router/test_database_errors.py
 ```
 
 ## Tests paramétrés
@@ -77,13 +81,36 @@ Exemples :
 - **`test_update_tool.py`** : Tests de validation avec différents champs invalides (10 cas)
 - **`test_update_tool.py`** : Tests avec différents statuts (active, trial, deprecated)
 
+## Tests d'erreurs de base de données
+
+**Fichier :** `test_database_errors.py`
+
+Tests pour vérifier que tous les endpoints retournent HTTP 500 avec le format standardisé lorsque la base de données est indisponible.
+
+### Fonctionnalités
+
+- Test paramétré qui passe en revue tous les endpoints disponibles
+- Vérifie que chaque endpoint retourne :
+  - Statut HTTP 500
+  - Format de réponse : `{"error": "Internal server error", "message": "Database connection failed"}`
+
+### Endpoints testés
+
+- `GET /tools` : Liste des outils
+- `GET /tools/{tool_id}` : Détail d'un outil
+- `POST /tools` : Création d'un outil
+- `PUT /tools/{tool_id}` : Mise à jour d'un outil
+
+**Total : 4 tests** (1 fonction paramétrée testant les 4 endpoints)
+
 ## Statistiques des tests
 
-**Total : 139 tests** pour les endpoints `/tools` :
+**Total : 143 tests** pour les endpoints `/tools` :
 
 - `GET /tools` : 65 tests
 - `GET /tools/{tool_id}` : 22 tests
 - `POST /tools` : 21 tests
-- `PUT /tools/{tool_id}` : 32 tests
+- `PUT /tools/{tool_id}` : 31 tests
+- **Erreurs de base de données** : 4 tests (tous endpoints)
 
 Voir `tests/router/tool/README.md` pour la documentation détaillée de chaque endpoint.

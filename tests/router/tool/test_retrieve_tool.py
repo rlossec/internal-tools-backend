@@ -233,14 +233,16 @@ class TestRetrieveToolEndpoint:
         
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "not found" in data["detail"].lower()
+        assert "error" in data
+        assert data["error"] == "Tool not found"
+        assert "message" in data
+        assert "does not exist" in data["message"].lower() or "not found" in data["message"].lower()
     
     # 422 - Validation errors
     @pytest.mark.parametrize("invalid_tool_id, expected_status", [
-        ("not_a_number", 422),
-        ("abc", 422),
-        ("1.5", 422),
+        ("not_a_number", 400),
+        ("abc", 400),
+        ("1.5", 400),
         ("", 307),  # FastAPI redirige vers /tools avec une chaîne vide
     ])
     def test_get_tool_invalid_id_type(self, client, invalid_tool_id, expected_status):
@@ -249,7 +251,8 @@ class TestRetrieveToolEndpoint:
         
         assert response.status_code == expected_status
         
-        if expected_status == 422:
+        if expected_status == 400:
             data = response.json()
-            assert "detail" in data
+            assert "error" in data
+            assert data["error"] == "Validation failed"
 

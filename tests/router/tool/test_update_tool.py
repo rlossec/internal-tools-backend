@@ -58,34 +58,6 @@ class TestUpdateToolEndpoint:
         assert data["status"] == original_status
         assert data["description"] == test_tools[0].description
     
-    def test_update_tool_only_status(self, client, test_tools):
-        """Test mise à jour uniquement du statut."""
-        tool_id = test_tools[0].id
-        
-        update_data = {
-            "status": "trial"
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "trial"
-    
-    def test_update_tool_only_description(self, client, test_tools):
-        """Test mise à jour uniquement de la description."""
-        tool_id = test_tools[0].id
-        
-        update_data = {
-            "description": "New description"
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["description"] == "New description"
-    
     def test_update_tool_empty_body(self, client, test_tools):
         """Test mise à jour avec un body vide (aucun changement)."""
         tool_id = test_tools[0].id
@@ -156,76 +128,37 @@ class TestUpdateToolEndpoint:
         data = response.json()
         assert data["description"] is None
     
-    def test_update_tool_name(self, client, test_tools):
-        """Test mise à jour du nom."""
+    @pytest.mark.parametrize("field, value, expected_value, needs_categories", [
+        ("name", "Updated Tool Name", "Updated Tool Name", False),
+        ("vendor", "New Vendor", "New Vendor", False),
+        ("website_url", "https://newwebsite.com", "https://newwebsite.com", False),
+        ("owner_department", "Sales", "Sales", False),
+        ("description", "New description", "New description", False),
+        ("status", "trial", "trial", False),
+        ("category_id", None, None, True),  # Sera remplacé dynamiquement
+    ])
+    def test_update_tool_individual_fields(self, client, test_tools, test_categories, field, value, expected_value, needs_categories):
+        """Test paramétré pour la mise à jour de chaque champ individuellement."""
         tool_id = test_tools[0].id
         
-        update_data = {
-            "name": "Updated Tool Name"
-        }
+        # Pour category_id, utiliser une catégorie différente
+        if field == "category_id" and needs_categories:
+            new_category_id = test_categories[1].id
+            update_data = {field: new_category_id}
+            expected_value = test_categories[1].name
+        else:
+            update_data = {field: value}
         
         response = client.put(f"/tools/{tool_id}", json=update_data)
         
         assert response.status_code == 200
         data = response.json()
-        assert data["name"] == "Updated Tool Name"
-    
-    def test_update_tool_vendor(self, client, test_tools):
-        """Test mise à jour du vendor."""
-        tool_id = test_tools[0].id
         
-        update_data = {
-            "vendor": "New Vendor"
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["vendor"] == "New Vendor"
-    
-    def test_update_tool_website_url(self, client, test_tools):
-        """Test mise à jour de l'URL du site web."""
-        tool_id = test_tools[0].id
-        
-        update_data = {
-            "website_url": "https://newwebsite.com"
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["website_url"] == "https://newwebsite.com"
-    
-    def test_update_tool_category_id(self, client, test_tools, test_categories):
-        """Test mise à jour de la catégorie."""
-        tool_id = test_tools[0].id
-        new_category_id = test_categories[1].id  # Utiliser une autre catégorie
-        
-        update_data = {
-            "category_id": new_category_id
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["category"] == test_categories[1].name
-    
-    def test_update_tool_owner_department(self, client, test_tools):
-        """Test mise à jour du département propriétaire."""
-        tool_id = test_tools[0].id
-        
-        update_data = {
-            "owner_department": "Sales"
-        }
-        
-        response = client.put(f"/tools/{tool_id}", json=update_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["owner_department"] == "Sales"
+        # Pour category_id, vérifier le nom de la catégorie dans la réponse
+        if field == "category_id":
+            assert data["category"] == expected_value
+        else:
+            assert data[field] == expected_value
     
     def test_update_tool_all_fields(self, client, test_tools, test_categories):
         """Test mise à jour de tous les champs en une fois."""
@@ -299,7 +232,9 @@ class TestUpdateToolEndpoint:
         
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
+        assert "error" in data
+        assert data["error"] == "Tool not found"
+        assert "message" in data
     
     def test_update_tool_invalid_category(self, client, test_tools):
         """Test avec une catégorie inexistante."""
@@ -313,8 +248,10 @@ class TestUpdateToolEndpoint:
         
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "category" in data["detail"].lower() or "not found" in data["detail"].lower()
+        assert "error" in data
+        assert data["error"] == "Tool not found"
+        assert "message" in data
+        assert "category" in data["message"].lower() or "does not exist" in data["message"].lower()
     
 
     # 422 - Validation errors
@@ -340,11 +277,13 @@ class TestUpdateToolEndpoint:
         
         response = client.put(f"/tools/{tool_id}", json=update_data)
         
-        assert response.status_code == 422
+        assert response.status_code == 400
         data = response.json()
-        assert "detail" in data
-        error_text = str(data).lower()
-        assert error_keyword.lower() in error_text
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+        assert "details" in data
+        # Vérifier que le champ en erreur est dans les details
+        assert field in data["details"] or error_keyword.lower() in str(data["details"]).lower()
     
     def test_update_tool_invalid_id_type(self, client):
         """Test avec un ID invalide (non numérique)."""
@@ -354,5 +293,8 @@ class TestUpdateToolEndpoint:
         
         response = client.put("/tools/abc", json=update_data)
         
-        assert response.status_code == 422
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert data["error"] == "Validation failed"
 

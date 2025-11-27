@@ -7,7 +7,37 @@ Ce dossier contient les tests pour tous les endpoints liés aux outils (`/tools`
 - `GET /tools` : 65 tests
 - `GET /tools/{tool_id}` : 22 tests
 - `POST /tools` : 21 tests
-- `PUT /tools/{tool_id}` : 32 tests
+- `PUT /tools/{tool_id}` : 31 tests
+
+> **Note** : Les tests pour les erreurs de base de données sont dans `tests/router/test_database_errors.py`.
+
+## Formats d'erreur standardisés
+
+### Erreurs de validation (400 Bad Request)
+
+Toutes les erreurs de validation retournent HTTP 400 avec le format suivant :
+
+```json
+{
+  "error": "Validation failed",
+  "details": {
+    "name": "Name is required and must be 2-100 characters",
+    "monthly_cost": "Must be a positive number",
+    "website_url": "Must be a valid URL format"
+  }
+}
+```
+
+### Ressources non trouvées (404 Not Found)
+
+Toutes les erreurs de ressource non trouvée retournent HTTP 404 avec le format suivant :
+
+```json
+{
+  "error": "Tool not found",
+  "message": "Tool with ID <id> does not exist"
+}
+```
 
 ## Structure des fichiers
 
@@ -39,7 +69,7 @@ pytest tests/router/tool/test_update_tool.py      # Tests pour PUT /tools/{tool_
 
 Tests pour l'endpoint `GET /tools` qui permet de récupérer la liste des outils avec filtres, tri et pagination.
 
-**Total : 65 tests** (28 fonctions de test, dont plusieurs paramétrées) couvrant tous les cas d'usage, filtres, tri, pagination et validations.
+**Total : 65 tests** couvrant tous les cas d'usage, filtres, tri, pagination et validations.
 
 ### Fonctionnalités
 
@@ -111,14 +141,18 @@ L'endpoint supporte :
 - `limit` : Nombre d'éléments par page (1-100, optionnel)
 - Les métadonnées de pagination (`pagination`) ne sont incluses que si `page` et `limit` sont fournis
 
-### Tests de validation d'erreurs (422)
+### Tests de validation d'erreurs (400)
 
 - `test_get_tools_query_validation_errors` : Test paramétré pour les erreurs de validation FastAPI Query
   - Coûts négatifs (`min_cost`, `max_cost`)
   - Enums invalides (`sort_by`, `sort_order`)
   - **4 cas testés** via `@pytest.mark.parametrize`
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
 - `test_get_tools_pydantic_validation_error` : Erreur de validation Pydantic (logique métier)
   - `min_cost > max_cost` (validation métier)
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
+
+> **Note** : Les tests pour les erreurs de base de données (HTTP 500) sont regroupés dans `tests/router/test_database_errors.py` et testent tous les endpoints.
 
 ## GET /tools/{tool_id} - Détail d'un outil
 
@@ -160,14 +194,15 @@ L'endpoint retourne :
 
 - `test_get_tool_not_found_scenarios` : Test paramétré pour différents IDs inexistants
   - **3 scénarios testés** via `@pytest.mark.parametrize` (0, -1, 999999)
-  - Retourne un statut 404 avec un message d'erreur dans `detail`
+  - Retourne HTTP 404 avec format : `{"error": "Tool not found", "message": "Tool with ID {id} does not exist"}`
 
-### Tests de validation d'erreurs (422)
+### Tests de validation d'erreurs (400)
 
 - `test_get_tool_invalid_id_type` : Test paramétré pour IDs invalides (non numériques)
   - IDs non numériques : "not_a_number", "abc", "1.5"
   - Chaîne vide : redirige vers `/tools` (307)
   - **4 cas testés** via `@pytest.mark.parametrize`
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
 
 ---
 
@@ -177,7 +212,7 @@ L'endpoint retourne :
 
 Tests pour l'endpoint `POST /tools` qui permet de créer un nouvel outil.
 
-**Total : 21 tests** (9 fonctions de test, dont plusieurs paramétrées) couvrant tous les cas d'usage, les validations et les cas limites.
+**Total : 21 tests** couvrant tous les cas d'usage, les validations et les cas limites.
 
 ### Fonctionnalités
 
@@ -199,17 +234,18 @@ L'endpoint permet de créer un nouvel outil avec :
 - `test_create_tool_zero_cost` : Création avec un coût de 0 (gratuit)
 - `test_create_tool_response_structure` : Vérification de la structure de la réponse
 
-### Tests de validation d'erreurs (422)
+### Tests de validation d'erreurs (400)
 
 - `test_create_tool_validation_errors` : Test paramétré pour les erreurs de validation
   - Champs requis manquants (`name`, `vendor`, `category_id`, `monthly_cost`, `owner_department`)
   - Coût négatif (`monthly_cost < 0`)
   - Département invalide (`owner_department` non valide)
   - **7 cas testés** via `@pytest.mark.parametrize`
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
 
 ### Tests Not Found - 404
 
-- `test_create_tool_invalid_category` : Catégorie inexistante retourne 404
+- `test_create_tool_invalid_category` : Catégorie inexistante retourne 404 avec le bon format
 
 ---
 
@@ -219,7 +255,7 @@ L'endpoint permet de créer un nouvel outil avec :
 
 Tests pour l'endpoint `PUT /tools/{tool_id}` qui permet de mettre à jour un outil existant.
 
-**Total : 32 tests** (19 fonctions de test, dont plusieurs paramétrées) couvrant tous les cas d'usage, les validations et les cas limites.
+**Total : 31 tests** couvrant tous les cas d'usage, les validations et les cas limites.
 
 ### Fonctionnalités
 
@@ -240,13 +276,9 @@ L'endpoint permet de mettre à jour **partiellement** un outil. Tous les champs 
 
 #### Tests de mise à jour par champ
 
-- `test_update_tool_only_status` : Mise à jour uniquement du statut
-- `test_update_tool_only_description` : Mise à jour uniquement de la description
-- `test_update_tool_name` : Mise à jour du nom
-- `test_update_tool_vendor` : Mise à jour du vendor
-- `test_update_tool_website_url` : Mise à jour de l'URL du site web
-- `test_update_tool_category_id` : Mise à jour de la catégorie
-- `test_update_tool_owner_department` : Mise à jour du département propriétaire
+- `test_update_tool_individual_fields` : Test paramétré pour la mise à jour de chaque champ individuellement
+  - **7 champs testés** via `@pytest.mark.parametrize` : `name`, `vendor`, `website_url`, `owner_department`, `description`, `status`, `category_id`
+  - Vérifie que chaque champ peut être mis à jour indépendamment
 - `test_update_tool_all_fields` : Mise à jour de tous les champs en une fois
 
 #### Tests de cas limites
@@ -259,9 +291,11 @@ L'endpoint permet de mettre à jour **partiellement** un outil. Tous les champs 
 ### Tests Not Found - 404
 
 - `test_update_tool_not_found` : Outil inexistant retourne 404
+  - Retourne HTTP 404 avec format : `{"error": "Tool not found", "message": "Tool with ID {id} does not exist"}`
 - `test_update_tool_invalid_category` : Catégorie inexistante retourne 404
+  - Retourne HTTP 404 avec format : `{"error": "Tool not found", "message": "Category with ID {id} does not exist"}`
 
-### Tests de validation d'erreurs (422)
+### Tests de validation d'erreurs (400)
 
 - `test_update_tool_validation_errors` : Test paramétré pour les erreurs de validation
   - Nom trop court/long (`name` < 2 ou > 100 caractères)
@@ -273,7 +307,9 @@ L'endpoint permet de mettre à jour **partiellement** un outil. Tous les champs 
   - Statut invalide (`status` non valide)
   - URL invalide (`website_url` ne commence pas par http:// ou https://)
   - **10 cas testés** via `@pytest.mark.parametrize` (name, vendor, category_id, monthly_cost, owner_department, status, website_url)
-- `test_update_tool_invalid_id_type` : ID invalide (non numérique) retourne 422
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
+- `test_update_tool_invalid_id_type` : ID invalide (non numérique) retourne 400
+  - Retourne HTTP 400 avec format : `{"error": "Validation failed", "details": {...}}`
 
 ### Tests de structure
 

@@ -157,11 +157,13 @@ class TestCreateToolEndpoint:
         
         response = client.post("/tools", json=tool_data)
         
-        assert response.status_code == 422
+        assert response.status_code == 400
         data = response.json()
-        assert "detail" in data
-        error_text = str(data).lower()
-        assert error_keyword.lower() in error_text
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+        assert "details" in data
+        # Vérifier que le champ en erreur est dans les details
+        assert field in data["details"] or error_keyword.lower() in str(data["details"]).lower()
     
     # 404 - Category not found
     def test_create_tool_invalid_category(self, client):
@@ -178,8 +180,10 @@ class TestCreateToolEndpoint:
         
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "category" in data["detail"].lower() or "not found" in data["detail"].lower()
+        assert "error" in data
+        assert data["error"] == "Tool not found"
+        assert "message" in data
+        assert "category" in data["message"].lower() or "does not exist" in data["message"].lower()
     
     def test_create_tool_response_structure(self, client):
         """Test que la structure de la réponse est correcte."""

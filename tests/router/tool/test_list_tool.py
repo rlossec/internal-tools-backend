@@ -313,10 +313,12 @@ class TestGetToolsEndpoint:
         """Test des erreurs de validation FastAPI Query (paramètres de requête invalides)."""
         response = client.get(f"/tools?{query_params}")
         
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
+        assert response.status_code == 400, f"Expected 400, got {response.status_code}. Response: {response.text}"
         
         data = response.json()
-        assert "detail" in data, f"Response should contain 'detail' field: {data}"
+        assert "error" in data, f"Response should contain 'error' field: {data}"
+        assert data["error"] == "Validation failed"
+        assert "details" in data, f"Response should contain 'details' field: {data}"
         
         # Vérifier le message d'erreur si spécifié
         if error_keyword:
@@ -324,31 +326,26 @@ class TestGetToolsEndpoint:
             assert error_keyword.lower() in error_text, f"Expected '{error_keyword}' in error message, got: {data}"
         
         # Vérifier le champ en erreur si spécifié
-        if error_field and "errors" in data:
-            error_fields = [err.get("field", "") for err in data.get("errors", [])]
-            assert any(error_field in field for field in error_fields), \
-                f"Expected field '{error_field}' in errors: {error_fields}"
+        if error_field and "details" in data:
+            details_text = str(data["details"]).lower()
+            assert error_field in data["details"] or (error_keyword and error_keyword.lower() in details_text), \
+                f"Expected field '{error_field}' in details: {data['details']}"
     
     def test_get_tools_pydantic_validation_error(self, client):
         """Test des erreurs de validation Pydantic (logique métier, ex: min_cost > max_cost)."""
         response = client.get("/tools?min_cost=100&max_cost=50")
         
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
+        assert response.status_code == 400, f"Expected 400, got {response.status_code}. Response: {response.text}"
         
         data = response.json()
-        assert "detail" in data, f"Response should contain 'detail' field: {data}"
+        assert "error" in data, f"Response should contain 'error' field: {data}"
+        assert data["error"] == "Validation failed"
+        assert "details" in data, f"Response should contain 'details' field: {data}"
         
-        # La structure est {'detail': {'detail': '...', 'errors': [...]}}
-        detail = data["detail"]
-        if isinstance(detail, dict):
-            assert "errors" in detail, f"Response should contain 'errors' field for Pydantic validation: {data}"
-            assert len(detail["errors"]) > 0, "Errors array should not be empty"
-            
-            # Vérifier que le message d'erreur contient la validation métier
-            error_text = str(detail).lower()
-            assert "min_cost ne peut pas être supérieur à max_cost" in error_text or \
-                   ("min_cost" in error_text and "max_cost" in error_text), \
-                   f"Expected validation error message, got: {data}"
+        # Vérifier que le message d'erreur contient la validation métier
+        error_text = str(data).lower()
+        assert "min_cost" in error_text and "max_cost" in error_text, \
+               f"Expected validation error message about min_cost/max_cost, got: {data}"
     
     # Response structure
     def test_get_tools_filters_applied_in_response(self, client):
@@ -480,9 +477,11 @@ class TestGetToolsEndpoint:
         """Test des erreurs de validation pour la pagination."""
         response = client.get(f"/tools?{query_params}")
         
-        assert response.status_code == 422
+        assert response.status_code == 400
         data = response.json()
-        assert "detail" in data
+        assert "error" in data
+        assert data["error"] == "Validation failed"
+        assert "details" in data
         error_text = str(data).lower()
         assert error_keyword.lower() in error_text
     
