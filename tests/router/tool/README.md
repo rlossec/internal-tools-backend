@@ -28,7 +28,18 @@ pytest tests/router/tool/create_tool.py # Tests pour POST /tools
 
 **Fichier :** `test_list_tool.py`
 
-Tests pour l'endpoint `GET /tools` qui permet de récupérer la liste des outils avec filtres et tri.
+Tests pour l'endpoint `GET /tools` qui permet de récupérer la liste des outils avec filtres, tri et pagination.
+
+### Fonctionnalités
+
+L'endpoint supporte :
+
+- **Filtrage** : par catégorie, vendeur, département, statut, coût (min/max)
+- **Tri** : par nom, coût, ID, date de création (asc/desc)
+- **Pagination** : paramètres `page` et `limit` optionnels
+  - `page` : numéro de page (≥ 1)
+  - `limit` : nombre d'éléments par page (1-100)
+  - Les métadonnées de pagination sont incluses uniquement si les deux paramètres sont fournis
 
 ### Tests des succès - 200
 
@@ -66,15 +77,41 @@ Tests pour l'endpoint `GET /tools` qui permet de récupérer la liste des outils
 
 - `test_get_tools_no_results` : Aucun résultat avec un filtre
 - `test_get_tools_no_results_scenarios` : Test paramétré pour différents scénarios sans résultats (4 cas)
-- `test_get_tools_invalid_department` : Département invalide (ignoré silencieusement)
+- `test_get_tools_invalid_filters_ignored` : Test paramétré pour les filtres invalides (département, statut) ignorés silencieusement
+- `test_get_tools_empty_filters` : Test paramétré pour différents scénarios de filtres vides (4 cas)
+- `test_get_tools_filters_applied_in_response` : Vérification que les filtres appliqués sont retournés dans la réponse
+- `test_get_tools_default_sort` : Vérification que le tri par défaut est par ID croissant
+
+#### Tests de pagination
+
+- `test_get_tools_pagination_first_page` : Pagination - première page
+- `test_get_tools_pagination_middle_page` : Pagination - page du milieu
+- `test_get_tools_pagination_last_page` : Pagination - dernière page
+- `test_get_tools_pagination_without_pagination_params` : Sans page/limit, pas de métadonnées de pagination
+- `test_get_tools_pagination_with_filters` : Pagination combinée avec des filtres
+- `test_get_tools_pagination_with_sorting` : Pagination combinée avec tri
+- `test_get_tools_pagination_validation_errors` : Test paramétré pour les erreurs de validation de pagination
+  - `page < 1` (6 cas testés)
+- `test_get_tools_pagination_page_out_of_range` : Page hors limites (retourne NoResultsFoundResponse)
+
+**Paramètres de pagination :**
+
+- `page` : Numéro de page (commence à 1, optionnel)
+- `limit` : Nombre d'éléments par page (1-100, optionnel)
+- Les métadonnées de pagination (`pagination`) ne sont incluses que si `page` et `limit` sont fournis
 
 ### Tests de validation d'erreurs (422)
 
-- [ ] Tests pour les erreurs de validation (coûts négatifs, plages invalides, etc.) [À venir]
+- `test_get_tools_query_validation_errors` : Test paramétré pour les erreurs de validation FastAPI Query
+  - Coûts négatifs (`min_cost`, `max_cost`)
+  - Enums invalides (`sort_by`, `sort_order`)
+  - **4 cas testés** via `@pytest.mark.parametrize`
+- `test_get_tools_pydantic_validation_error` : Erreur de validation Pydantic (logique métier)
+  - `min_cost > max_cost` (validation métier)
 
 ## GET /tools/{tool_id} - Détail d'un outil
 
-**Fichier :** `get_tool.py` [À venir]
+**Fichier :** `test_get_tool.py` [À venir]
 
 Tests pour l'endpoint `GET /tools/{tool_id}` qui permet de récupérer les détails d'un outil spécifique.
 

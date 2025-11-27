@@ -31,6 +31,8 @@ def get_tool_filters(
     min_cost: Optional[float] = Query(None, description="Coût minimum", ge=0),
     sort_by: Optional[SortToolField] = Query(None, description="Champ de tri"),
     sort_order: Optional[SortOrder] = Query(None, description="Ordre de tri (asc/desc)"),
+    page: Optional[int] = Query(None, description="Numéro de page (commence à 1)", ge=1),
+    limit: Optional[int] = Query(None, description="Nombre d'éléments par page (max 100)", ge=1, le=100),
 ) -> ToolFilters:
     """Dépendance pour construire les filtres à partir des paramètres de requête."""
     try:
@@ -43,6 +45,8 @@ def get_tool_filters(
             min_cost=min_cost,
             sort_by=sort_by,
             sort_order=sort_order,
+            page=page,
+            limit=limit,
         )
     except ValidationError as e:
         # Convertir l'erreur Pydantic en HTTPException pour que FastAPI la gère correctement

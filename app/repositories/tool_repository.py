@@ -73,6 +73,11 @@ class ToolRepository:
         else:
             query = query.order_by(ToolModel.id.asc())
 
+        # Pagination
+        if filters.page is not None and filters.limit is not None:
+            offset = (filters.page - 1) * filters.limit
+            query = query.offset(offset).limit(filters.limit)
+
         return query.all()
 
     def count_filtered(self, filters: ToolFilters) -> int:

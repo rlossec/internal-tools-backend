@@ -381,3 +381,117 @@ class TestGetToolsEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert len(data["data"]) == expected_count
+    
+    # Pagination
+    def test_get_tools_pagination_first_page(self, client):
+        """Test pagination - première page."""
+        response = client.get("/tools?page=1&limit=2")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 2
+        assert "pagination" in data
+        pagination = data["pagination"]
+        assert pagination["page"] == 1
+        assert pagination["limit"] == 2
+        assert pagination["total_pages"] == 3  # 5 items / 2 per page = 3 pages
+        assert pagination["total_items"] == 5
+        assert pagination["has_next"] is True
+        assert pagination["has_previous"] is False
+    
+    def test_get_tools_pagination_middle_page(self, client):
+        """Test pagination - page du milieu."""
+        response = client.get("/tools?page=2&limit=2")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 2
+        pagination = data["pagination"]
+        assert pagination["page"] == 2
+        assert pagination["limit"] == 2
+        assert pagination["total_pages"] == 3
+        assert pagination["total_items"] == 5
+        assert pagination["has_next"] is True
+        assert pagination["has_previous"] is True
+    
+    def test_get_tools_pagination_last_page(self, client):
+        """Test pagination - dernière page."""
+        response = client.get("/tools?page=3&limit=2")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 1  # Dernière page avec 1 item
+        pagination = data["pagination"]
+        assert pagination["page"] == 3
+        assert pagination["limit"] == 2
+        assert pagination["total_pages"] == 3
+        assert pagination["total_items"] == 5
+        assert pagination["has_next"] is False
+        assert pagination["has_previous"] is True
+    
+    def test_get_tools_pagination_without_pagination_params(self, client):
+        """Test que sans page/limit, pas de métadonnées de pagination."""
+        response = client.get("/tools")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 5
+        assert data["pagination"] is None
+    
+    def test_get_tools_pagination_with_filters(self, client):
+        """Test pagination combinée avec des filtres."""
+        response = client.get("/tools?department=Engineering&page=1&limit=1")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 1
+        assert data["filtered"] == 2  # 2 outils dans Engineering
+        pagination = data["pagination"]
+        assert pagination["page"] == 1
+        assert pagination["limit"] == 1
+        assert pagination["total_pages"] == 2  # 2 items / 1 per page = 2 pages
+        assert pagination["total_items"] == 2  # Seulement les items filtrés
+        assert pagination["has_next"] is True
+        assert pagination["has_previous"] is False
+    
+    def test_get_tools_pagination_with_sorting(self, client):
+        """Test pagination combinée avec tri."""
+        response = client.get("/tools?page=1&limit=2&sort_by=name&sort_order=asc")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 2
+        # Vérifier que les 2 premiers sont bien triés
+        assert data["data"][0]["name"] == "Deprecated Tool"
+        assert data["data"][1]["name"] == "Figma"
+        pagination = data["pagination"]
+        assert pagination["page"] == 1
+        assert pagination["limit"] == 2
+    
+    @pytest.mark.parametrize("query_params, error_keyword", [
+        ("page=0", "greater than or equal to 1"),
+        ("page=-1", "greater than or equal to 1"),
+        ("limit=0", "greater than or equal to 1"),
+        ("limit=-1", "greater than or equal to 1"),
+        ("limit=101", "less than or equal to 100"),
+        ("limit=200", "less than or equal to 100"),
+    ])
+    def test_get_tools_pagination_validation_errors(self, client, query_params, error_keyword):
+        """Test des erreurs de validation pour la pagination."""
+        response = client.get(f"/tools?{query_params}")
+        
+        assert response.status_code == 422
+        data = response.json()
+        assert "detail" in data
+        error_text = str(data).lower()
+        assert error_keyword.lower() in error_text
+    
+    def test_get_tools_pagination_page_out_of_range(self, client):
+        """Test pagination avec une page hors limites (retourne NoResultsFoundResponse)."""
+        response = client.get("/tools?page=10&limit=2")
+        
+        assert response.status_code == 200
+        data = response.json()
+        # Quand il n'y a pas de résultats avec pagination, on retourne NoResultsFoundResponse
+        assert "message" in data
+        assert data["message"] == "No results found"

@@ -54,7 +54,6 @@ class SortToolField(str, Enum):
 
 
 class ToolFilters(BaseModel):
-    """Schéma pour les filtres et le tri des outils."""
     category: Optional[str] = None
     vendor: Optional[str] = None
     department: Optional[str] = None
@@ -63,6 +62,8 @@ class ToolFilters(BaseModel):
     min_cost: Optional[float] = None
     sort_by: Optional[SortToolField] = None
     sort_order: Optional[SortOrder] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
     
     @model_validator(mode='after')
     def validate_cost_range(self):
@@ -70,6 +71,17 @@ class ToolFilters(BaseModel):
         if self.min_cost is not None and self.max_cost is not None:
             if self.min_cost > self.max_cost:
                 raise ValueError("min_cost ne peut pas être supérieur à max_cost")
+        return self
+    
+    @model_validator(mode='after')
+    def validate_pagination(self):
+        """Valide les paramètres de pagination."""
+        if self.page is not None and self.page < 1:
+            raise ValueError("page doit être supérieur ou égal à 1")
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit doit être supérieur ou égal à 1")
+        if self.limit is not None and self.limit > 100:
+            raise ValueError("limit ne peut pas dépasser 100")
         return self
     
     def get_applied_filters(self) -> Dict[str, Any]:
@@ -91,7 +103,21 @@ class ToolFilters(BaseModel):
             filters["sort_by"] = self.sort_by.value
         if self.sort_order is not None:
             filters["sort_order"] = self.sort_order
+        if self.page is not None:
+            filters["page"] = self.page
+        if self.limit is not None:
+            filters["limit"] = self.limit
         return filters
+
+
+class PaginationInfo(BaseModel):
+    """Métadonnées de pagination."""
+    page: int
+    limit: int
+    total_pages: int
+    total_items: int
+    has_next: bool
+    has_previous: bool
 
 
 class ToolsListResponse(BaseModel):
@@ -99,6 +125,7 @@ class ToolsListResponse(BaseModel):
     total: int
     filtered: int
     filters_applied: Dict[str, Any]
+    pagination: Optional[PaginationInfo] = None
 
 
 
