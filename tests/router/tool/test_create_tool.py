@@ -181,9 +181,9 @@ class TestCreateToolEndpoint:
         assert response.status_code == 404
         data = response.json()
         assert "error" in data
-        assert data["error"] == "Tool not found"
+        assert data["error"] == "Category not found"
         assert "message" in data
-        assert "category" in data["message"].lower() or "does not exist" in data["message"].lower()
+        assert "Category with ID 999 does not exist" in data["message"]
     
     def test_create_tool_response_structure(self, client):
         """Test que la structure de la réponse est correcte."""

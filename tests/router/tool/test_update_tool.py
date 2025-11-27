@@ -137,6 +137,7 @@ class TestUpdateToolEndpoint:
         ("status", "trial", "trial", False),
         ("category_id", None, None, True),  # Sera remplacé dynamiquement
     ])
+
     def test_update_tool_individual_fields(self, client, test_tools, test_categories, field, value, expected_value, needs_categories):
         """Test paramétré pour la mise à jour de chaque champ individuellement."""
         tool_id = test_tools[0].id
@@ -220,7 +221,6 @@ class TestUpdateToolEndpoint:
         assert data["created_at"] is not None
         assert data["updated_at"] is not None
 
-
     # 404 - Outil/catégorie inexistant(e)
     def test_update_tool_not_found(self, client):
         """Test avec un outil inexistant."""
@@ -249,9 +249,9 @@ class TestUpdateToolEndpoint:
         assert response.status_code == 404
         data = response.json()
         assert "error" in data
-        assert data["error"] == "Tool not found"
+        assert data["error"] == "Category not found"
         assert "message" in data
-        assert "category" in data["message"].lower() or "does not exist" in data["message"].lower()
+        assert "Category with ID 99999 does not exist" in data["message"]
     
 
     # 422 - Validation errors
@@ -297,4 +297,3 @@ class TestUpdateToolEndpoint:
         data = response.json()
         assert "error" in data
         assert data["error"] == "Validation failed"
-
