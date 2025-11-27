@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import Tool as ToolModel, Category, UsageLog
 from app.models.enum_types import DepartmentType, ToolStatus
 from app.schemas import ToolFilters, SortToolField, SortOrder
+from app.core.errors import CategoryNotFoundError, ToolNotFoundError
 
 
 class ToolRepository:
@@ -105,7 +106,7 @@ class ToolRepository:
         # Vérifier que la catégorie existe
         category = self._db.query(Category).filter(Category.id == category_id).first()
         if not category:
-            raise ValueError(f"Category with id {category_id} not found")
+            raise CategoryNotFoundError(category_id)
         
         tool = ToolModel(
             name=name,
@@ -142,13 +143,13 @@ class ToolRepository:
         """Met à jour un outil existant."""
         tool = self._db.query(ToolModel).filter(ToolModel.id == tool_id).first()
         if not tool:
-            raise ValueError(f"Tool with id {tool_id} not found")
+            raise ToolNotFoundError(tool_id)
         
         # Vérifier que la catégorie existe si category_id est fourni
         if category_id is not ...:
             category = self._db.query(Category).filter(Category.id == category_id).first()
             if not category:
-                raise ValueError(f"Category with id {category_id} not found")
+                raise CategoryNotFoundError(category_id)
         
         # Mettre à jour uniquement les champs fournis (utiliser Ellipsis pour détecter les champs non fournis)
         if name is not ...:

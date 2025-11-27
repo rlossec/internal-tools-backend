@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
 import math
 
-from fastapi import HTTPException, status
-
 from app.repositories import ToolRepository
 from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
 from app.models.enum_types import DepartmentType, ToolStatus
+from app.core.errors import ToolNotFoundError
 
 
 class ToolService:
@@ -19,24 +18,15 @@ class ToolService:
         
         department = DepartmentType(tool_data.owner_department)
 
-        try:
-            tool_model = self._repository.create_tool(
-                name=tool_data.name,
-                description=tool_data.description,
-                vendor=tool_data.vendor,
-                website_url=tool_data.website_url,
-                category_id=tool_data.category_id,
-                monthly_cost=tool_data.monthly_cost,
-                owner_department=department,
-            )
-        except ValueError as e:
-
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e)
-            )
-        
-        # Convertir en ToolCreateResponse
+        tool_model = self._repository.create_tool(
+            name=tool_data.name,
+            description=tool_data.description,
+            vendor=tool_data.vendor,
+            website_url=tool_data.website_url,
+            category_id=tool_data.category_id,
+            monthly_cost=tool_data.monthly_cost,
+            owner_department=department,
+        )
         return ToolCreateResponse.model_validate(tool_model)
     
     def update_tool(self, tool_id: int, tool_data: ToolUpdateRequest) -> ToolUpdateResponse:
@@ -68,30 +58,17 @@ class ToolService:
         monthly_cost = provided_fields.get("monthly_cost", ...) if "monthly_cost" in provided_fields else ...
         
         # Mettre à jour via le repository
-        try:
-            tool_model = self._repository.update_tool(
-                tool_id=tool_id,
-                name=name,
-                description=description,
-                vendor=vendor,
-                website_url=website_url,
-                category_id=category_id,
-                monthly_cost=monthly_cost,
-                owner_department=owner_department_enum,
-                status=status_enum,
-            )
-        except ValueError as e:
-            # Erreur de catégorie inexistante
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e)
-            )
-        
-        if not tool_model:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Tool with id {tool_id} not found"
-            )
+        tool_model = self._repository.update_tool(
+            tool_id=tool_id,
+            name=name,
+            description=description,
+            vendor=vendor,
+            website_url=website_url,
+            category_id=category_id,
+            monthly_cost=monthly_cost,
+            owner_department=owner_department_enum,
+            status=status_enum,
+        )
         
         # Convertir en ToolUpdateResponse
         return ToolUpdateResponse.model_validate(tool_model)
@@ -101,10 +78,7 @@ class ToolService:
         tool_model = self._repository.get_tool(tool_id)
         
         if not tool_model:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Tool with id {tool_id} not found"
-            )
+            raise ToolNotFoundError(tool_id)
 
         tool = Tool.model_validate(tool_model)
         
@@ -121,6 +95,9 @@ class ToolService:
         )
     
     def list_tools(self, filters: ToolFilters) -> ToolsListResponse | NoResultsFoundResponse:
+        """
+        Liste les outils avec filtres, tri et pagination.
+        """
         tool_models = self._repository.list_tools(filters)
         tools = [Tool.model_validate(tool) for tool in tool_models]
         
@@ -159,10 +136,7 @@ class ToolService:
         """
         tool = self._repository.get_tool(tool_id)
         if not tool:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tool not found"
-            )
+            raise ToolNotFoundError(tool_id)
 
         total_monthly_cost = float(tool.monthly_cost) * tool.active_users_count
         
@@ -174,10 +148,7 @@ class ToolService:
         """
         tool = self._repository.get_tool(tool_id)
         if not tool:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tool not found"
-            )
+            raise ToolNotFoundError(tool_id)
 
         usage_logs = self._repository.get_tool_usage_logs(tool_id)
         # Filtrer les logs des N derniers jours

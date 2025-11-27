@@ -1,7 +1,6 @@
 from typing import Optional
 
-from fastapi import Depends, Query, HTTPException, status
-from pydantic import ValidationError
+from fastapi import Depends, Query
 
 from app.db.database import SessionLocal
 from app.repositories.tool_repository import ToolRepository
@@ -34,37 +33,25 @@ def get_tool_filters(
     page: Optional[int] = Query(None, description="Numéro de page (commence à 1)", ge=1),
     limit: Optional[int] = Query(None, description="Nombre d'éléments par page (max 100)", ge=1, le=100),
 ) -> ToolFilters:
-    """Dépendance pour construire les filtres à partir des paramètres de requête."""
-    try:
-        return ToolFilters(
-            category=category,
-            vendor=vendor,
-            department=department,
-            status=tool_status,
-            max_cost=max_cost,
-            min_cost=min_cost,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            page=page,
-            limit=limit,
-        )
-    except ValidationError as e:
-        # Convertir l'erreur Pydantic en HTTPException pour que FastAPI la gère correctement
-        errors = []
-        for error in e.errors():
-            field = ".".join(str(loc) for loc in error["loc"])
-            errors.append({
-                "field": field,
-                "message": error["msg"],
-                "type": error["type"],
-            })
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail={
-                "detail": "Erreur de validation",
-                "errors": errors
-            }
-        )
+    """
+    Dépendance pour construire les filtres à partir des paramètres de requête.
+    
+    Les erreurs de validation Pydantic sont automatiquement gérées par
+    le gestionnaire pydantic_validation_exception_handler dans app/core/exceptions.py
+    qui retourne un HTTP 400 avec le format standardisé.
+    """
+    return ToolFilters(
+        category=category,
+        vendor=vendor,
+        department=department,
+        status=tool_status,
+        max_cost=max_cost,
+        min_cost=min_cost,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit,
+    )
 
 
 __all__ = ["get_tool_repository", "get_tool_service", "get_tool_filters"]

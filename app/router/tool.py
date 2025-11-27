@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from app.router.dependencies import get_tool_service, get_tool_filters
 from app.services import ToolService
 
-from app.schemas import NoResultsFoundResponse, NotFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
+from app.schemas import NoResultsFoundResponse, ToolsListResponse, ToolDetailResponse, ToolFilters, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
 
 
 router = APIRouter(prefix="/tools", tags=["tools"])

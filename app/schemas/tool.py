@@ -9,6 +9,19 @@ from app.models import Category
 from app.schemas.common import SortOrder
 from app.models.enum_types import DepartmentType
 
+
+def transform_category_to_string(v) -> str:
+    """
+    Fonction utilitaire pour transformer un objet Category en string (nom de la catégorie).
+    
+    Utilisée par les field_validator pour éviter la duplication de code.
+    """
+    if v is None:
+        return ""
+    if hasattr(v, 'name'):
+        return v.name
+    return str(v) if v else ""
+
 # List Tools
 class Tool(BaseModel): 
     id: int
@@ -30,11 +43,7 @@ class Tool(BaseModel):
     @classmethod
     def transform_category(cls, v):
         """Transforme l'objet Category en string (nom de la catégorie)."""
-        if v is None:
-            return ""
-        if hasattr(v, 'name'):
-            return v.name
-        return str(v) if v else ""
+        return transform_category_to_string(v)
 
 
 # List tools filters and sorting
@@ -73,18 +82,18 @@ class ToolFilters(BaseModel):
         """Valide que min_cost <= max_cost si les deux sont fournis."""
         if self.min_cost is not None and self.max_cost is not None:
             if self.min_cost > self.max_cost:
-                raise ValueError("min_cost ne peut pas être supérieur à max_cost")
+                raise ValueError("min_cost cannot be greater than max_cost")
         return self
     
     @model_validator(mode='after')
     def validate_pagination(self):
         """Valide les paramètres de pagination."""
         if self.page is not None and self.page < 1:
-            raise ValueError("page doit être supérieur ou égal à 1")
+            raise ValueError("page must be greater than or equal to 1")
         if self.limit is not None and self.limit < 1:
-            raise ValueError("limit doit être supérieur ou égal à 1")
+            raise ValueError("limit must be greater than or equal to 1")
         if self.limit is not None and self.limit > 100:
-            raise ValueError("limit ne peut pas dépasser 100")
+            raise ValueError("limit cannot exceed 100")
         return self
     
     def get_applied_filters(self) -> Dict[str, Any]:
@@ -163,11 +172,7 @@ class ToolDetailResponse(BaseModel):
     @classmethod
     def transform_category(cls, v):
         """Transforme l'objet Category en string (nom de la catégorie)."""
-        if v is None:
-            return ""
-        if hasattr(v, 'name'):
-            return v.name
-        return str(v) if v else ""
+        return transform_category_to_string(v)
 
 
 # Create Tool
@@ -183,9 +188,9 @@ class ToolCreateRequest(BaseModel):
     @field_validator('name')
     @classmethod
     def validate_name(cls, v):
-        """Valide que le nom est est entre 2 et 100 caracteres."""
+        """Valide que le nom est entre 2 et 100 caracteres."""
         if len(v) < 2 or len(v) > 100:
-            raise ValueError("name doit avoir entre 2 et 100 caracteres")
+            raise ValueError("Name is required and must be 2-100 characters")
         return v
 
     @field_validator('monthly_cost')
@@ -193,10 +198,10 @@ class ToolCreateRequest(BaseModel):
     def validate_monthly_cost(cls, v):
         """Valide que le coût mensuel est positif et avec maximum 2 decimales."""
         if v < 0:
-            raise ValueError("monthly_cost doit être supérieur ou égal à 0")
+            raise ValueError("Must be a positive number")
         # Vérifier le nombre de décimales en multipliant par 100 et vérifiant si c'est un entier
         if abs(v * 100 - round(v * 100)) > 1e-10:
-            raise ValueError("monthly_cost doit avoir maximum 2 decimales")
+            raise ValueError("Must have at most 2 decimal places")
         return v
     
     @field_validator('owner_department')
@@ -206,7 +211,7 @@ class ToolCreateRequest(BaseModel):
         try:
             DepartmentType(v)
         except ValueError:
-            raise ValueError(f"owner_department doit être l'un de: {', '.join([d.value for d in DepartmentType])}")
+            raise ValueError(f"Must be one of: {', '.join([d.value for d in DepartmentType])}")
         return v
     
     @field_validator('website_url')
@@ -216,7 +221,7 @@ class ToolCreateRequest(BaseModel):
         if v is None:
             return v
         if not v.startswith('http://') and not v.startswith('https://'):
-            raise ValueError("website_url doit commencer par http:// ou https://")
+            raise ValueError("Must be a valid URL format")
         return v
 
     @field_validator('category_id')
@@ -226,7 +231,7 @@ class ToolCreateRequest(BaseModel):
         if v is None:
             return v
         if not isinstance(v, int) or v <= 0:
-            raise ValueError("category_id doit être un entier positif")
+            raise ValueError("Must be a positive integer")
         return v
 
     @field_validator('vendor')
@@ -236,7 +241,7 @@ class ToolCreateRequest(BaseModel):
         if v is None:
             return v
         if len(v) < 2 or len(v) > 100:
-            raise ValueError("vendor doit avoir entre 2 et 100 caracteres")
+            raise ValueError("Vendor must be 2-100 characters")
         return v
 
 
@@ -260,11 +265,7 @@ class ToolCreateResponse(BaseModel):
     @classmethod
     def transform_category(cls, v):
         """Transforme l'objet Category en string (nom de la catégorie)."""
-        if v is None:
-            return ""
-        if hasattr(v, 'name'):
-            return v.name
-        return str(v) if v else ""
+        return transform_category_to_string(v)
 
 
 # Update Tool
@@ -285,7 +286,7 @@ class ToolUpdateRequest(BaseModel):
         if v is None:
             return v
         if len(v) < 2 or len(v) > 100:
-            raise ValueError("name doit avoir entre 2 et 100 caracteres")
+            raise ValueError("Name is required and must be 2-100 characters")
         return v
     
     @field_validator('monthly_cost')
@@ -295,10 +296,10 @@ class ToolUpdateRequest(BaseModel):
         if v is None:
             return v
         if v < 0:
-            raise ValueError("monthly_cost doit être supérieur ou égal à 0")
+            raise ValueError("Must be a positive number")
         # Vérifier le nombre de décimales en multipliant par 100 et vérifiant si c'est un entier
         if abs(v * 100 - round(v * 100)) > 1e-10:
-            raise ValueError("monthly_cost doit avoir maximum 2 decimales")
+            raise ValueError("Must have at most 2 decimal places")
         return v
     
     @field_validator('owner_department')
@@ -310,7 +311,7 @@ class ToolUpdateRequest(BaseModel):
         try:
             DepartmentType(v)
         except ValueError:
-            raise ValueError(f"owner_department doit être l'un de: {', '.join([d.value for d in DepartmentType])}")
+            raise ValueError(f"Must be one of: {', '.join([d.value for d in DepartmentType])}")
         return v
     
     @field_validator('website_url')
@@ -320,9 +321,9 @@ class ToolUpdateRequest(BaseModel):
         if v is None:
             return v
         if not v.startswith('http://') and not v.startswith('https://'):
-            raise ValueError("website_url doit commencer par http:// ou https://")
+            raise ValueError("Must be a valid URL format")
         return v
-    
+
     @field_validator('category_id')
     @classmethod
     def validate_category_id(cls, v):
@@ -330,9 +331,9 @@ class ToolUpdateRequest(BaseModel):
         if v is None:
             return v
         if not isinstance(v, int) or v <= 0:
-            raise ValueError("category_id doit être un entier positif")
+            raise ValueError("Must be a positive integer")
         return v
-    
+
     @field_validator('vendor')
     @classmethod
     def validate_vendor(cls, v):
@@ -340,9 +341,9 @@ class ToolUpdateRequest(BaseModel):
         if v is None:
             return v
         if len(v) < 2 or len(v) > 100:
-            raise ValueError("vendor doit avoir entre 2 et 100 caracteres")
+            raise ValueError("Vendor must be 2-100 characters")
         return v
-    
+
     @field_validator('status')
     @classmethod
     def validate_status(cls, v):
@@ -353,7 +354,7 @@ class ToolUpdateRequest(BaseModel):
         try:
             ToolStatus(v)
         except ValueError:
-            raise ValueError(f"status doit être l'un de: {', '.join([s.value for s in ToolStatus])}")
+            raise ValueError(f"Must be one of: {', '.join([s.value for s in ToolStatus])}")
         return v
 
 
@@ -377,9 +378,5 @@ class ToolUpdateResponse(BaseModel):
     @classmethod
     def transform_category(cls, v):
         """Transforme l'objet Category en string (nom de la catégorie)."""
-        if v is None:
-            return ""
-        if hasattr(v, 'name'):
-            return v.name
-        return str(v) if v else ""
+        return transform_category_to_string(v)
 

@@ -26,6 +26,5 @@ __all__ = [
   # Common
   "NoResultsFoundResponse",
   "NotFoundResponse",
-  "SortByField",
   "SortOrder"
 ]
