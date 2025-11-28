@@ -99,7 +99,7 @@ def test_tools(db_session, test_categories):
             monthly_cost=100.00,
             active_users_count=15,
             owner_department=DepartmentType.Engineering,
-            status=ToolStatus.trial,
+            status=ToolStatus.active,
             created_at=datetime(2024, 3, 1),
             updated_at=datetime(2024, 3, 1)
         ),
