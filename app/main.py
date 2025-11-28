@@ -16,10 +16,12 @@ from app.core.exception_handlers import (
 )
 from app.core.errors import ResourceNotFoundError
 from app.router.tool import router as tool_router
+from app.router.analytics import router as analytics_router
 
 logging = setup_logging()
 
 app = FastAPI(
+  root_path='/api',
   title=config.app_name,
   debug=config.debug,
   logging=logging
@@ -33,6 +35,7 @@ app.add_exception_handler(DatabaseError, database_exception_handler)
 app.add_exception_handler(ResourceNotFoundError, resource_not_found_exception_handler)
 
 app.include_router(tool_router)
+app.include_router(analytics_router)
 
 
 @app.get("/")

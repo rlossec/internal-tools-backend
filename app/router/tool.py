@@ -12,7 +12,19 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 
 @router.get(
     "",
-    response_model=Union[ToolsListResponse, NoResultsFoundResponse]
+    response_model=Union[ToolsListResponse, NoResultsFoundResponse],
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Liste des outils"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Aucun outil trouvé"
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Erreur de validation"
+        }
+    },
+    summary="Récupère la liste des outils avec filtres, tri et pagination."
 )
 async def get_tools(
     tool_service: ToolService = Depends(get_tool_service),
@@ -25,7 +37,15 @@ async def get_tools(
 @router.post(
     "",
     response_model=ToolCreateResponse,
-    status_code=status.HTTP_201_CREATED
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "Outil créé avec succès"
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Erreur de validation"
+        }
+    },
+    summary="Crée un nouvel outil."
 )
 async def create_tool(
     tool_data: ToolCreateRequest,
@@ -35,10 +55,39 @@ async def create_tool(
     return tool_service.create_tool(tool_data)
 
 
+@router.get(
+    "/{tool_id}",
+    response_model=ToolDetailResponse,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Outil trouvé"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Outil non trouvé"
+        }
+    },
+    summary="Récupère les détails d'un outil par son ID."
+)
+async def get_tool(
+  tool_id: int,
+    tool_service: ToolService = Depends(get_tool_service),
+):
+    """Récupère les détails d'un outil par son ID."""
+    return tool_service.get_tool(tool_id)
+
+
 @router.put(
     "/{tool_id}",
     response_model=ToolUpdateResponse,
-    status_code=status.HTTP_200_OK
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Outil mis à jour avec succès"
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Erreur de validation"
+        }
+    },
+    summary="Met à jour un outil existant."
 )
 async def update_tool(
     tool_id: int,
@@ -47,15 +96,3 @@ async def update_tool(
 ):
     """Met à jour un outil existant."""
     return tool_service.update_tool(tool_id, tool_data)
-
-
-@router.get(
-    "/{tool_id}",
-    response_model=ToolDetailResponse
-)
-async def get_tool(
-  tool_id: int,
-    tool_service: ToolService = Depends(get_tool_service),
-):
-    """Récupère les détails d'un outil par son ID."""
-    return tool_service.get_tool(tool_id)

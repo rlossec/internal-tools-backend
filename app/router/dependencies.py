@@ -3,8 +3,9 @@ from typing import Optional
 from fastapi import Depends, Query
 
 from app.db.database import SessionLocal
-from app.repositories.tool_repository import ToolRepository
-from app.services.tool_service import ToolService
+
+from app.repositories import ToolRepository, DepartmentRepository
+from app.services import ToolService, DepartmentService
 from app.schemas import ToolFilters, SortToolField, SortOrder
 
 
@@ -54,4 +55,17 @@ def get_tool_filters(
     )
 
 
-__all__ = ["get_tool_repository", "get_tool_service", "get_tool_filters"]
+def get_department_repository():
+    db = SessionLocal()
+    try:
+        yield DepartmentRepository(session=db)
+    finally:
+        db.close()
+
+
+def get_department_service(department_repository: DepartmentRepository = Depends(get_department_repository)):
+    """Dépendance pour obtenir le DepartmentService."""
+    yield DepartmentService(department_repository=department_repository)
+
+
+__all__ = ["get_tool_repository", "get_tool_service", "get_tool_filters", "get_department_repository", "get_department_service"]
