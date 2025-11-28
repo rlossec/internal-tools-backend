@@ -7,7 +7,7 @@ class TestRetrieveToolEndpoint:
     """Tests pour l'endpoint GET /tools/{tool_id}."""
     
     # 200 - Succès
-    def test_get_tool_success(self, client):
+    def test_get_tool_success(self, client, test_categories, test_tools):
         """Test récupération réussie d'un outil existant."""
         response = client.get("/tools/1")
         
@@ -40,7 +40,7 @@ class TestRetrieveToolEndpoint:
         assert data["status"] == "active"
         assert data["category"] == "Development"
     
-    def test_get_tool_total_monthly_cost_calculation(self, client):
+    def test_get_tool_total_monthly_cost_calculation(self, client, test_categories, test_tools):
         """Test que le coût total mensuel est correctement calculé."""
         # GitHub : monthly_cost=50, active_users_count=10 => total=500
         response = client.get("/tools/1")
@@ -58,7 +58,7 @@ class TestRetrieveToolEndpoint:
         (4, "Figma", 240.0),   # 30 * 8
         (5, "Deprecated Tool", 0.0),  # 20 * 0
     ])
-    def test_get_tool_different_tools(self, client, tool_id, expected_name, expected_total_cost):
+    def test_get_tool_different_tools(self, client, test_tools, tool_id, expected_name, expected_total_cost):
         """Test récupération de différents outils avec calculs corrects."""
         response = client.get(f"/tools/{tool_id}")
         
@@ -69,7 +69,7 @@ class TestRetrieveToolEndpoint:
         assert data["name"] == expected_name
         assert data["total_monthly_cost"] == expected_total_cost
     
-    def test_get_tool_usage_metrics_structure(self, client):
+    def test_get_tool_usage_metrics_structure(self, client, test_categories, test_tools, test_user, test_usage_logs):
         """Test que les métriques d'utilisation ont la bonne structure."""
         response = client.get("/tools/1")
         
@@ -88,7 +88,7 @@ class TestRetrieveToolEndpoint:
         assert isinstance(last_30_days["total_sessions"], int)
         assert isinstance(last_30_days["avg_session_minutes"], int)
     
-    def test_get_tool_usage_metrics_without_logs(self, client):
+    def test_get_tool_usage_metrics_without_logs(self, client, test_categories, test_tools):
         """Test que les métriques retournent 0 quand il n'y a pas de logs."""
         response = client.get("/tools/1")
         
@@ -204,7 +204,7 @@ class TestRetrieveToolEndpoint:
         assert usage_metrics["total_sessions"] == 2
         assert usage_metrics["avg_session_minutes"] == 0
     
-    def test_get_tool_response_fields(self, client):
+    def test_get_tool_response_fields(self, client, test_categories, test_tools):
         """Test que tous les champs requis sont présents dans la réponse."""
         response = client.get("/tools/1")
         

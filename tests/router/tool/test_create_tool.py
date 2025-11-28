@@ -5,7 +5,7 @@ import pytest
 class TestCreateToolEndpoint:
 
     # 201 - Succès
-    def test_create_tool_success(self, client):
+    def test_create_tool_success(self, client, test_categories, test_tools):
         """Test création réussie d'un outil avec données valides."""
         tool_data = {
             "name": "Linear",
@@ -36,7 +36,7 @@ class TestCreateToolEndpoint:
         assert "created_at" in data
         assert "updated_at" in data
     
-    def test_create_tool_with_status(self, client):
+    def test_create_tool_with_status(self, client, test_categories):
         """Test création - le statut est toujours 'active' par défaut."""
         tool_data = {
             "name": "New Tool",
@@ -53,7 +53,7 @@ class TestCreateToolEndpoint:
         data = response.json()
         assert data["status"] == "active"  # Toujours 'active' par défaut
     
-    def test_create_tool_minimal_data(self, client):
+    def test_create_tool_minimal_data(self, client, test_categories):
         """Test création avec données minimales (champs optionnels omis)."""
         tool_data = {
             "name": "Minimal Tool",
@@ -82,7 +82,7 @@ class TestCreateToolEndpoint:
         "Operations",
         "Design",
     ])
-    def test_create_tool_different_departments(self, client, department):
+    def test_create_tool_different_departments(self, client, test_categories, department):
         """Test création avec différents départements."""
         tool_data = {
             "name": f"Tool for {department}",
@@ -98,7 +98,7 @@ class TestCreateToolEndpoint:
         data = response.json()
         assert data["owner_department"] == department
     
-    def test_create_tool_status_always_active(self, client):
+    def test_create_tool_status_always_active(self, client, test_categories):
         """Test que le statut est toujours 'active' lors de la création."""
         tool_data = {
             "name": "New Tool",
@@ -114,7 +114,7 @@ class TestCreateToolEndpoint:
         data = response.json()
         assert data["status"] == "active"  # Toujours 'active' par défaut
     
-    def test_create_tool_zero_cost(self, client):
+    def test_create_tool_zero_cost(self, client, test_categories):
         """Test création avec un coût de 0 (gratuit)."""
         tool_data = {
             "name": "Free Tool",
@@ -166,7 +166,7 @@ class TestCreateToolEndpoint:
         assert field in data["details"] or error_keyword.lower() in str(data["details"]).lower()
     
     # 404 - Category not found
-    def test_create_tool_invalid_category(self, client):
+    def test_create_tool_invalid_category(self, client, test_categories):
         """Test avec une catégorie inexistante."""
         tool_data = {
             "name": "Test Tool",
@@ -185,7 +185,7 @@ class TestCreateToolEndpoint:
         assert "message" in data
         assert "Category with ID 999 does not exist" in data["message"]
     
-    def test_create_tool_response_structure(self, client):
+    def test_create_tool_response_structure(self, client, test_categories):
         """Test que la structure de la réponse est correcte."""
         tool_data = {
             "name": "Structure Test",

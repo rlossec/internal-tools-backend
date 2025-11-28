@@ -222,7 +222,7 @@ class TestUpdateToolEndpoint:
         assert data["updated_at"] is not None
 
     # 404 - Outil/catégorie inexistant(e)
-    def test_update_tool_not_found(self, client):
+    def test_update_tool_not_found(self, client, test_categories, test_tools):
         """Test avec un outil inexistant."""
         update_data = {
             "monthly_cost": 10.0
@@ -285,7 +285,7 @@ class TestUpdateToolEndpoint:
         # Vérifier que le champ en erreur est dans les details
         assert field in data["details"] or error_keyword.lower() in str(data["details"]).lower()
     
-    def test_update_tool_invalid_id_type(self, client):
+    def test_update_tool_invalid_id_type(self, client, test_categories, test_tools):
         """Test avec un ID invalide (non numérique)."""
         update_data = {
             "monthly_cost": 10.0

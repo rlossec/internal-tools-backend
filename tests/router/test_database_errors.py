@@ -20,6 +20,8 @@ class TestDatabaseErrors:
         ("PUT", "/tools/1", {
             "monthly_cost": 60.0
         }),
+        ("GET", "/analytics/department-costs", None),
+        ("GET", "/analytics/expensive-tools", None),
     ])
     def test_endpoints_return_500_when_database_unavailable(self, client, method, url, data):
         """Test que tous les endpoints retournent 500 quand la base de données est indisponible."""
@@ -41,6 +43,14 @@ class TestDatabaseErrors:
             # PUT /tools/{id} utilise update_tool
             with patch('app.services.tool_service.ToolRepository.update_tool', side_effect=OperationalError("Connection failed", None, None)):
                 response = client.put(url, json=data)
+        elif method == "GET" and url == "/analytics/department-costs":
+            # GET /analytics/department-costs utilise get_department_costs
+            with patch('app.services.department.department_service.DepartmentRepository.get_department_costs_data', side_effect=OperationalError("Connection failed", None, None)):
+                response = client.get(url)
+        elif method == "GET" and url == "/analytics/expensive-tools":
+            # GET /analytics/expensive-tools utilise get_expensive_tools
+            with patch('app.services.tool_service.ToolRepository.list_tools', side_effect=OperationalError("Connection failed", None, None)):
+                response = client.get(url)
         else:
             pytest.fail(f"Method {method} not supported")
         

@@ -5,9 +5,9 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
 from app.db.database import Base
-from app.repositories import ToolRepository
-from app.services import ToolService
-from app.router.dependencies import get_tool_service
+from app.repositories import ToolRepository, DepartmentRepository
+from app.services import ToolService, DepartmentService
+from app.router.dependencies import get_tool_service, get_department_service
 from app.main import app
 
 # Base de données de test en mémoire
@@ -30,8 +30,13 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
-# Charger automatiquement les fixtures de données
-pytest_plugins = ["tests.fixtures.data"]
+# Charger automatiquement les fixtures de données, factories et départements
+pytest_plugins = [
+    "tests.fixtures.data",
+    "tests.fixtures.department.data",
+    "tests.fixtures.department.services",
+    "tests.factories"
+]
 
 
 @pytest.fixture
@@ -54,11 +59,21 @@ def create_override_get_tool_service(db_session):
     return override_get_tool_service
 
 
+def create_override_get_department_service(db_session):
+    """Crée une fonction override de la dépendance pour les tests."""
+    def override_get_department_service():
+        repository = DepartmentRepository(session=db_session)
+        yield DepartmentService(department_repository=repository)
+    return override_get_department_service
+
+
 @pytest.fixture
-def client(db_session, test_categories, test_tools):
-    """Crée un client de test FastAPI."""
-    # Override de la dépendance pour utiliser la session de test
+def client(db_session):
+    """Crée un client de test FastAPI vide par défaut.
+    """
+    # Override des dépendances pour utiliser la session de test
     app.dependency_overrides[get_tool_service] = create_override_get_tool_service(db_session)
+    app.dependency_overrides[get_department_service] = create_override_get_department_service(db_session)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

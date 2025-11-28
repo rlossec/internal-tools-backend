@@ -7,7 +7,7 @@ class TestGetToolsEndpoint:
     
     # 200
     # Filters
-    def test_get_tools_without_filters(self, client):
+    def test_get_tools_without_filters(self, client, test_categories, test_tools):
         """Test récupération de tous les outils sans filtres."""
         response = client.get("/tools")
         
@@ -21,7 +21,7 @@ class TestGetToolsEndpoint:
         assert data["total"] == 5
         assert data["filtered"] == 5
     
-    def test_get_tools_filter_by_category(self, client):
+    def test_get_tools_filter_by_category(self, client, test_categories, test_tools):
         """Test filtrage par catégorie."""
         response = client.get("/tools?category=Development")
         
@@ -31,7 +31,7 @@ class TestGetToolsEndpoint:
         assert data["data"][0]["name"] == "GitHub"
         assert data["filtered"] == 1
     
-    def test_get_tools_filter_by_vendor(self, client):
+    def test_get_tools_filter_by_vendor(self, client, test_categories, test_tools):
         """Test filtrage par vendeur."""
         response = client.get("/tools?vendor=GitHub")
         
@@ -41,7 +41,7 @@ class TestGetToolsEndpoint:
         assert data["data"][0]["name"] == "GitHub"
         assert data["filtered"] == 1
     
-    def test_get_tools_filter_by_department(self, client):
+    def test_get_tools_filter_by_department(self, client, test_categories, test_tools):
         """Test filtrage par département."""
         response = client.get("/tools?department=Engineering")
         
@@ -51,17 +51,17 @@ class TestGetToolsEndpoint:
         assert all(tool["owner_department"] == "Engineering" for tool in data["data"])
         assert data["filtered"] == 2
     
-    def test_get_tools_filter_by_status(self, client):
+    def test_get_tools_filter_by_status(self, client, test_categories, test_tools):
         """Test filtrage par statut."""
         response = client.get("/tools?status=active")
         
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 3  # GitHub, Slack, Figma
+        assert len(data["data"]) == 4  # GitHub, Slack, Jira, Figma (Jira est maintenant actif)
         assert all(tool["status"] == "active" for tool in data["data"])
-        assert data["filtered"] == 3
+        assert data["filtered"] == 4
     
-    def test_get_tools_filter_by_min_cost(self, client):
+    def test_get_tools_filter_by_min_cost(self, client, test_categories, test_tools):
         """Test filtrage par coût minimum."""
         response = client.get("/tools?min_cost=50")
         
@@ -71,7 +71,7 @@ class TestGetToolsEndpoint:
         assert all(tool["monthly_cost"] >= 50 for tool in data["data"])
         assert data["filtered"] == 3
     
-    def test_get_tools_filter_by_max_cost(self, client):
+    def test_get_tools_filter_by_max_cost(self, client, test_categories, test_tools):
         """Test filtrage par coût maximum."""
         response = client.get("/tools?max_cost=50")
         
@@ -81,7 +81,7 @@ class TestGetToolsEndpoint:
         assert all(tool["monthly_cost"] <= 50 for tool in data["data"])
         assert data["filtered"] == 3
     
-    def test_get_tools_filter_by_cost_range(self, client):
+    def test_get_tools_filter_by_cost_range(self, client, test_categories, test_tools):
         """Test filtrage par plage de coût."""
         response = client.get("/tools?min_cost=30&max_cost=75")
         
@@ -91,7 +91,7 @@ class TestGetToolsEndpoint:
         assert all(30 <= tool["monthly_cost"] <= 75 for tool in data["data"])
         assert data["filtered"] == 3
     
-    def test_get_tools_partial_vendor_match(self, client):
+    def test_get_tools_partial_vendor_match(self, client, test_categories, test_tools):
         """Test que le filtre de vendeur accepte des correspondances partielles."""
         response = client.get("/tools?vendor=Tech")
         
@@ -101,18 +101,18 @@ class TestGetToolsEndpoint:
         assert data["data"][0]["name"] == "Slack"
     
     @pytest.mark.parametrize("query_params, expected_count, expected_names", [
-        # Test 1: Engineering + active + min_cost 50
-        ("department=Engineering&status=active&min_cost=50", 1, ["GitHub"]),
+        # Test 1: Engineering + active + min_cost 50 (Jira 100€ est maintenant actif)
+        ("department=Engineering&status=active&min_cost=50", 2, ["GitHub", "Jira"]),
         # Test 2: Marketing + active
         ("department=Marketing&status=active", 1, ["Slack"]),
-        # Test 3: Engineering + trial
-        ("department=Engineering&status=trial", 1, ["Jira"]),
+        # Test 3: Engineering + trial (Jira est maintenant active, donc aucun résultat)
+        ("department=Engineering&status=trial", 0, []),
         # Test 4: Design + active
         ("department=Design&status=active", 1, ["Figma"]),
         # Test 5: active + max_cost 50
         ("status=active&max_cost=50", 2, ["GitHub", "Figma"]),
-        # Test 6: active + min_cost 75
-        ("status=active&min_cost=75", 1, ["Slack"]),
+        # Test 6: active + min_cost 75 (Jira 100€ est maintenant actif)
+        ("status=active&min_cost=75", 2, ["Slack", "Jira"]),
         # Test 7: Engineering + min_cost 50 + max_cost 100
         ("department=Engineering&min_cost=50&max_cost=100", 2, ["GitHub", "Jira"]),
         # Test 8: active + cost range 30-75
@@ -122,16 +122,25 @@ class TestGetToolsEndpoint:
         # Test 10: Multiple departments (via category filtering)
         ("category=Development&status=active", 1, ["GitHub"]),
     ])
-    def test_get_tools_multiple_filters(self, client, query_params, expected_count, expected_names):
+    def test_get_tools_multiple_filters(self, client, test_categories, test_tools, query_params, expected_count, expected_names):
         """Test avec plusieurs combinaisons de filtres."""
         response = client.get(f"/tools?{query_params}")
         
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == expected_count
-        actual_names = [tool["name"] for tool in data["data"]]
-        assert set(actual_names) == set(expected_names)
-        assert data["filtered"] == expected_count
+        
+        # Si aucun résultat attendu, vérifier que c'est une NoResultsFoundResponse
+        if expected_count == 0:
+            assert "message" in data
+            assert "data" not in data
+            assert data["message"] == "No results found"
+        else:
+            # Sinon, vérifier que c'est une ToolsListResponse
+            assert "data" in data
+            assert len(data["data"]) == expected_count
+            actual_names = [tool["name"] for tool in data["data"]]
+            assert set(actual_names) == set(expected_names)
+            assert data["filtered"] == expected_count
 
     # Sorting
     @pytest.mark.parametrize("sort_by, sort_order, expected_first_name, check_field", [
@@ -148,7 +157,7 @@ class TestGetToolsEndpoint:
         ("created_at", "asc", "Deprecated Tool", "created_at"),  # 2023-01-01 (le plus ancien)
         ("created_at", "desc", "Figma", "created_at"),  # 2024-04-01 (le plus récent)
     ])
-    def test_get_tools_sorting(self, client, sort_by, sort_order, expected_first_name, check_field):
+    def test_get_tools_sorting(self, client, test_categories, test_tools, sort_by, sort_order, expected_first_name, check_field):
         """Test tri des outils par différents champs et ordres."""
         response = client.get(f"/tools?sort_by={sort_by}&sort_order={sort_order}")
         
@@ -187,7 +196,7 @@ class TestGetToolsEndpoint:
         assert data["data"][0]["name"] == expected_first_name, \
             f"Le premier élément devrait être '{expected_first_name}', mais c'est '{data['data'][0]['name']}'"
     
-    def test_get_tools_default_sort(self, client):
+    def test_get_tools_default_sort(self, client, test_categories, test_tools):
         """Test que le tri par défaut est par ID croissant."""
         response = client.get("/tools")
         
@@ -197,8 +206,8 @@ class TestGetToolsEndpoint:
         assert ids == sorted(ids)
 
     @pytest.mark.parametrize("query_params, sort_by, sort_order, expected_first_name, expected_first_value, check_field", [
-        # Test 1: active + tri par coût décroissant
-        ("status=active&sort_by=monthly_cost&sort_order=desc", "monthly_cost", "desc", "Slack", 75.0, "monthly_cost"),
+        # Test 1: active + tri par coût décroissant (Jira 100€ est maintenant actif et sera le premier)
+        ("status=active&sort_by=monthly_cost&sort_order=desc", "monthly_cost", "desc", "Jira", 100.0, "monthly_cost"),
         # Test 2: active + tri par coût croissant
         ("status=active&sort_by=monthly_cost&sort_order=asc", "monthly_cost", "asc", "Figma", 30.0, "monthly_cost"),
         # Test 3: Engineering + tri par nom croissant
@@ -207,12 +216,12 @@ class TestGetToolsEndpoint:
         ("department=Engineering&sort_by=name&sort_order=desc", "name", "desc", "Jira", "Jira", "name"),
         # Test 5: active + tri par date croissante
         ("status=active&sort_by=created_at&sort_order=asc", "created_at", "asc", "GitHub", None, "created_at"),
-        # Test 6: cost range + tri par coût décroissant
+        # Test 6: cost range + tri par coût décroissant (Jira 100€ n'est pas dans la plage 30-75)
         ("min_cost=30&max_cost=75&sort_by=monthly_cost&sort_order=desc", "monthly_cost", "desc", "Slack", 75.0, "monthly_cost"),
         # Test 7: department + status + tri par coût
         ("department=Engineering&status=active&sort_by=monthly_cost&sort_order=asc", "monthly_cost", "asc", "GitHub", 50.0, "monthly_cost"),
     ])
-    def test_get_tools_filter_and_sort(self, client, query_params, sort_by, sort_order, expected_first_name, expected_first_value, check_field):
+    def test_get_tools_filter_and_sort(self, client, test_categories, test_tools, query_params, sort_by, sort_order, expected_first_name, expected_first_value, check_field):
         """Test combinaison de filtres et tri avec différentes options."""
         response = client.get(f"/tools?{query_params}")
         
@@ -253,7 +262,7 @@ class TestGetToolsEndpoint:
                 f"La valeur du champ '{check_field}' devrait être {expected_first_value}, mais c'est {data['data'][0][check_field]}"
 
     # No results
-    def test_get_tools_no_results(self, client):
+    def test_get_tools_no_results(self, client, test_categories, test_tools):
         """Test avec des filtres qui ne retournent aucun résultat."""
         response = client.get("/tools?vendor=NonExistentVendor")
         
@@ -267,7 +276,7 @@ class TestGetToolsEndpoint:
         ("department=InvalidDepartment", "department"),
         ("status=invalid_status", "status"),
     ])
-    def test_get_tools_invalid_filters_ignored(self, client, query_params, filter_type):
+    def test_get_tools_invalid_filters_ignored(self, client, test_categories, test_tools, query_params, filter_type):
         """Test que les filtres invalides sont ignorés silencieusement."""
         response = client.get(f"/tools?{query_params}")
         
@@ -287,7 +296,7 @@ class TestGetToolsEndpoint:
         # Test 4: Catégorie inexistante
         ("category=NonExistentCategory", 0),
     ])
-    def test_get_tools_no_results_scenarios(self, client, query_params, expected_count):
+    def test_get_tools_no_results_scenarios(self, client, test_categories, test_tools, query_params, expected_count):
         """Test de différents scénarios qui retournent aucun résultat."""
         response = client.get(f"/tools?{query_params}")
         
@@ -348,7 +357,7 @@ class TestGetToolsEndpoint:
                f"Expected validation error message about min_cost/max_cost, got: {data}"
     
     # Response structure
-    def test_get_tools_filters_applied_in_response(self, client):
+    def test_get_tools_filters_applied_in_response(self, client, test_categories, test_tools):
         """Test que les filtres appliqués sont retournés dans la réponse."""
         response = client.get("/tools?category=Development&vendor=GitHub&sort_by=name")
         
@@ -370,7 +379,7 @@ class TestGetToolsEndpoint:
         # Test 4: Filtres None (pas de paramètres)
         ("", 5),
     ])
-    def test_get_tools_empty_filters(self, client, query_params, expected_count):
+    def test_get_tools_empty_filters(self, client, test_categories, test_tools, query_params, expected_count):
         """Test avec différents scénarios de filtres vides."""
         url = f"/tools?{query_params}" if query_params else "/tools"
         response = client.get(url)
@@ -380,7 +389,7 @@ class TestGetToolsEndpoint:
         assert len(data["data"]) == expected_count
     
     # Pagination
-    def test_get_tools_pagination_first_page(self, client):
+    def test_get_tools_pagination_first_page(self, client, test_categories, test_tools):
         """Test pagination - première page."""
         response = client.get("/tools?page=1&limit=2")
         
@@ -396,7 +405,7 @@ class TestGetToolsEndpoint:
         assert pagination["has_next"] is True
         assert pagination["has_previous"] is False
     
-    def test_get_tools_pagination_middle_page(self, client):
+    def test_get_tools_pagination_middle_page(self, client, test_categories, test_tools):
         """Test pagination - page du milieu."""
         response = client.get("/tools?page=2&limit=2")
         
@@ -411,7 +420,7 @@ class TestGetToolsEndpoint:
         assert pagination["has_next"] is True
         assert pagination["has_previous"] is True
     
-    def test_get_tools_pagination_last_page(self, client):
+    def test_get_tools_pagination_last_page(self, client, test_categories, test_tools):
         """Test pagination - dernière page."""
         response = client.get("/tools?page=3&limit=2")
         
@@ -426,7 +435,7 @@ class TestGetToolsEndpoint:
         assert pagination["has_next"] is False
         assert pagination["has_previous"] is True
     
-    def test_get_tools_pagination_without_pagination_params(self, client):
+    def test_get_tools_pagination_without_pagination_params(self, client, test_categories, test_tools):
         """Test que sans page/limit, pas de métadonnées de pagination."""
         response = client.get("/tools")
         
@@ -435,7 +444,7 @@ class TestGetToolsEndpoint:
         assert len(data["data"]) == 5
         assert data["pagination"] is None
     
-    def test_get_tools_pagination_with_filters(self, client):
+    def test_get_tools_pagination_with_filters(self, client, test_categories, test_tools):
         """Test pagination combinée avec des filtres."""
         response = client.get("/tools?department=Engineering&page=1&limit=1")
         
@@ -451,7 +460,7 @@ class TestGetToolsEndpoint:
         assert pagination["has_next"] is True
         assert pagination["has_previous"] is False
     
-    def test_get_tools_pagination_with_sorting(self, client):
+    def test_get_tools_pagination_with_sorting(self, client, test_categories, test_tools):
         """Test pagination combinée avec tri."""
         response = client.get("/tools?page=1&limit=2&sort_by=name&sort_order=asc")
         
@@ -485,7 +494,7 @@ class TestGetToolsEndpoint:
         error_text = str(data).lower()
         assert error_keyword.lower() in error_text
     
-    def test_get_tools_pagination_page_out_of_range(self, client):
+    def test_get_tools_pagination_page_out_of_range(self, client, test_categories, test_tools):
         """Test pagination avec une page hors limites (retourne NoResultsFoundResponse)."""
         response = client.get("/tools?page=10&limit=2")
         
