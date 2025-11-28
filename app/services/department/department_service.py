@@ -52,22 +52,13 @@ class DepartmentService:
     ) -> DepartmentCostsResponse:
         """
         Récupère la répartition des coûts par département.
-        
-        Args:
-            sort_by: Champ de tri (department ou total_cost)
-            order: Ordre de tri (asc ou desc)
-            
-        Returns:
-            DepartmentCostsResponse avec les données et le résumé
         """
         # Récupérer les données brutes
         department_costs_data = self._repository.get_department_costs_data()
-        department_users_count = self._repository.get_department_active_users_count()
         
         # Agrégation par département
         department_aggregates = self._aggregator.aggregate_costs(
-            department_costs_data,
-            department_users_count
+            department_costs_data
         )
         
         # Calculer le coût total de l'entreprise
@@ -80,13 +71,7 @@ class DepartmentService:
             total_company_cost
         )
         
-        # Gérer les départements sans outils actifs
-        self._aggregator.add_departments_without_tools(
-            department_items,
-            department_users_count,
-            department_aggregates
-        )
-        
+
         # Trier les résultats
         self._sort_department_items(department_items, sort_by, order)
         

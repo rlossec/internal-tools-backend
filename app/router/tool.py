@@ -37,6 +37,7 @@ async def get_tools(
 @router.post(
     "",
     response_model=ToolCreateResponse,
+    status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_201_CREATED: {
             "description": "Outil créé avec succès"

@@ -1,10 +1,9 @@
 """Repository pour les données de département."""
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
-from app.models import User, Tool, UserToolAccess
-from app.models.enum_types import AccessStatus, UserStatus
+from app.models import Tool, CostTracking
+from app.models.enum_types import ToolStatus
 
 
 class DepartmentRepository:
@@ -17,49 +16,27 @@ class DepartmentRepository:
         """
         Récupère les données brutes pour le calcul des coûts par département.
         """
+        
         query = (
             self._db.query(
-                User.department,
+                Tool.owner_department,
                 Tool.id.label('tool_id'),
-                Tool.monthly_cost
+                CostTracking.total_monthly_cost.label('monthly_cost'),
+                CostTracking.active_users_count.label('active_users_count')
             )
-            .join(UserToolAccess, User.id == UserToolAccess.user_id)
-            .join(Tool, UserToolAccess.tool_id == Tool.id)
-            .filter(
-                and_(
-                    UserToolAccess.status == AccessStatus.active,
-                    User.status == UserStatus.active
-                )
-            )
-            .group_by(User.department, Tool.id, Tool.monthly_cost)
+            .join(CostTracking, Tool.id == CostTracking.tool_id)
+            .filter(Tool.status == ToolStatus.active)
         )
         
         results = query.all()
         
         return [
             {
-                'department': str(row.department.value),
+                'department': str(row.owner_department.value),
                 'tool_id': row.tool_id,
-                'monthly_cost': float(row.monthly_cost)
+                'monthly_cost': float(row.monthly_cost),
+                'active_users_count': int(row.active_users_count)
             }
             for row in results
         ]
-    
-    def get_department_active_users_count(self) -> Dict[str, int]:
-        """Récupère le nombre d'utilisateurs actifs par département."""
-        query = (
-            self._db.query(
-                User.department,
-                func.count(User.id).label('user_count')
-            )
-            .filter(User.status == UserStatus.active)
-            .group_by(User.department)
-        )
-        
-        results = query.all()
-        
-        return {
-            str(row.department.value): row.user_count
-            for row in results
-        }
 
