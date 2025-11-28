@@ -1,5 +1,6 @@
 from .tool import Tool, ToolsListResponse, ToolDetailResponse, UsageMetrics, SessionMetrics, ToolFilters, SortToolField, PaginationInfo, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
 from .common import NoResultsFoundResponse, NotFoundResponse, SortOrder
+from .department import DepartmentCostItem, DepartmentCostsSummary, DepartmentCostsResponse, SortDepartmentCostField
 
 
 __all__ = [
@@ -23,6 +24,11 @@ __all__ = [
   # Tool Update
   "ToolUpdateRequest",
   "ToolUpdateResponse",
+  # Analytics
+  "DepartmentCostItem",
+  "DepartmentCostsSummary",
+  "DepartmentCostsResponse",
+  "SortDepartmentCostField",
   # Common
   "NoResultsFoundResponse",
   "NotFoundResponse",
