@@ -1,4 +1,9 @@
-from .tool import Tool, ToolsListResponse, ToolDetailResponse, UsageMetrics, SessionMetrics, ToolFilters, SortToolField, PaginationInfo, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
+from .tool import (
+    Tool, ToolsListResponse, ToolDetailResponse, UsageMetrics, SessionMetrics, 
+    ToolFilters, SortToolField, PaginationInfo, ToolCreateRequest, ToolCreateResponse, 
+    ToolUpdateRequest, ToolUpdateResponse, ExpensiveToolItem, ExpensiveToolsAnalysis, 
+    ExpensiveToolsResponse, EfficiencyRating
+)
 from .common import NoResultsFoundResponse, NotFoundResponse, SortOrder
 from .department import DepartmentCostItem, DepartmentCostsSummary, DepartmentCostsResponse, SortDepartmentCostField
 
@@ -24,11 +29,16 @@ __all__ = [
   # Tool Update
   "ToolUpdateRequest",
   "ToolUpdateResponse",
-  # Analytics
+  # Department Costs
   "DepartmentCostItem",
   "DepartmentCostsSummary",
   "DepartmentCostsResponse",
   "SortDepartmentCostField",
+  # Expensive Tools
+  "ExpensiveToolItem",
+  "ExpensiveToolsAnalysis",
+  "ExpensiveToolsResponse",
+  "EfficiencyRating",
   # Common
   "NoResultsFoundResponse",
   "NotFoundResponse",

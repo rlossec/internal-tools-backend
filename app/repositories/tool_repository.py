@@ -177,4 +177,22 @@ class ToolRepository:
         
         return tool
 
+    def get_company_cost_statistics(self) -> tuple[float, int]:
+        """
+        Calcule les statistiques globales de coût de l'entreprise.
+        """
+        from sqlalchemy import func
+        
+        result = self._db.query(
+            func.sum(ToolModel.monthly_cost).label('total_cost'),
+            func.sum(ToolModel.active_users_count).label('total_users')
+        ).filter(
+            ToolModel.active_users_count > 0
+        ).first()
+        
+        total_cost = float(result.total_cost) if result.total_cost else 0.0
+        total_users = int(result.total_users) if result.total_users else 0
+        
+        return (total_cost, total_users)
+
     

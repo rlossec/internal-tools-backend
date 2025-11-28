@@ -380,3 +380,42 @@ class ToolUpdateResponse(BaseModel):
         """Transforme l'objet Category en string (nom de la catégorie)."""
         return transform_category_to_string(v)
 
+
+# Expensive Tools Analytics
+class EfficiencyRating(str, Enum):
+    EXCELLENT = "excellent"
+    GOOD = "good"
+    AVERAGE = "average"
+    LOW = "low"
+
+
+class ExpensiveToolItem(BaseModel):
+    id: int
+    name: str
+    monthly_cost: float
+    active_users_count: int
+    cost_per_user: float
+    department: str
+    vendor: str
+    efficiency_rating: EfficiencyRating
+
+    @field_validator('monthly_cost', 'cost_per_user')
+    @classmethod
+    def round_decimals(cls, v: float) -> float:
+        return round(v, 2)
+
+
+class ExpensiveToolsAnalysis(BaseModel):
+    total_tools_analyzed: int
+    avg_cost_per_user_company: float
+    potential_savings_identified: float
+
+    @field_validator('avg_cost_per_user_company', 'potential_savings_identified')
+    @classmethod
+    def round_decimals(cls, v: float) -> float:
+        return round(v, 2)
+
+
+class ExpensiveToolsResponse(BaseModel):
+    data: List[ExpensiveToolItem]
+    analysis: ExpensiveToolsAnalysis

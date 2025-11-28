@@ -1,8 +1,15 @@
 from datetime import datetime, timedelta
 import math
+from typing import Optional
 
 from app.repositories import ToolRepository
-from app.schemas import Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, ToolDetailResponse, NotFoundResponse, UsageMetrics, SessionMetrics, ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse
+from app.schemas import (
+    Tool, ToolFilters, ToolsListResponse, NoResultsFoundResponse, PaginationInfo, 
+    ToolDetailResponse, UsageMetrics, SessionMetrics, 
+    ToolCreateRequest, ToolCreateResponse, ToolUpdateRequest, ToolUpdateResponse,
+    ExpensiveToolItem, ExpensiveToolsAnalysis, ExpensiveToolsResponse, EfficiencyRating,
+    SortToolField, SortOrder
+)
 from app.models.enum_types import DepartmentType, ToolStatus
 from app.core.errors import ToolNotFoundError
 
@@ -170,3 +177,133 @@ class ToolService:
                 avg_session_minutes=int(avg_session_minutes)
             )
         )
+
+    def get_expensive_tools(
+        self, 
+        min_cost: Optional[float] = None, 
+        limit: Optional[int] = None
+    ) -> ExpensiveToolsResponse:
+        """
+        Récupère les outils les plus coûteux avec analyse d'efficacité.
+        
+        Args:
+            min_cost: Coût minimum pour filtrer les outils
+            limit: Nombre maximum d'outils à retourner
+            
+        Returns:
+            ExpensiveToolsResponse: Réponse avec les outils et l'analyse
+        """
+        # Construire les filtres pour récupérer les outils
+        filters = ToolFilters(
+            min_cost=min_cost,
+            sort_by=SortToolField.MONTHLY_COST,
+            sort_order=SortOrder.DESC,
+            limit=limit
+        )
+        
+        # Récupérer tous les outils (sans pagination pour l'analyse)
+        all_tools = self._repository.list_tools(
+            ToolFilters(
+                min_cost=min_cost,
+                sort_by=SortToolField.MONTHLY_COST,
+                sort_order=SortOrder.DESC
+            )
+        )
+        
+        # Récupérer les outils limités pour la réponse
+        limited_tools = self._repository.list_tools(filters)
+        
+        # Calculer les statistiques globales de l'entreprise
+        total_monthly_cost, total_active_users = self._repository.get_company_cost_statistics()
+        
+        # Calculer avg_cost_per_user_company (moyenne pondérée globale)
+        # Exclut les outils à 0 utilisateurs (déjà fait dans get_company_cost_statistics)
+        avg_cost_per_user_company = (
+            total_monthly_cost / total_active_users 
+            if total_active_users > 0 else 0.0
+        )
+        
+        # Calculer cost_per_user et efficiency_rating pour chaque outil limité
+        expensive_tool_items = []
+        
+        for tool_model in limited_tools:
+            # Calculer cost_per_user avec gestion de la division par zéro
+            cost_per_user = (
+                float(tool_model.monthly_cost) / tool_model.active_users_count
+                if tool_model.active_users_count > 0 else 0.0
+            )
+            
+            # Calculer efficiency_rating basé sur la comparaison avec la moyenne
+            efficiency_rating = self._calculate_efficiency_rating(
+                cost_per_user, 
+                avg_cost_per_user_company
+            )
+            
+            expensive_tool_items.append(
+                ExpensiveToolItem(
+                    id=tool_model.id,
+                    name=tool_model.name,
+                    monthly_cost=float(tool_model.monthly_cost),
+                    active_users_count=tool_model.active_users_count,
+                    cost_per_user=cost_per_user,
+                    department=tool_model.owner_department.value,
+                    vendor=tool_model.vendor,
+                    efficiency_rating=efficiency_rating
+                )
+            )
+        
+        # Calculer potential_savings sur TOUS les outils (pas seulement ceux limités)
+        potential_savings = 0.0
+        for tool_model in all_tools:
+            cost_per_user = (
+                float(tool_model.monthly_cost) / tool_model.active_users_count
+                if tool_model.active_users_count > 0 else 0.0
+            )
+            efficiency_rating = self._calculate_efficiency_rating(
+                cost_per_user,
+                avg_cost_per_user_company
+            )
+            if efficiency_rating == EfficiencyRating.LOW:
+                potential_savings += float(tool_model.monthly_cost)
+        
+        # Construire l'analyse
+        analysis = ExpensiveToolsAnalysis(
+            total_tools_analyzed=len(all_tools),
+            avg_cost_per_user_company=avg_cost_per_user_company,
+            potential_savings_identified=potential_savings
+        )
+        
+        return ExpensiveToolsResponse(
+            data=expensive_tool_items,
+            analysis=analysis
+        )
+    
+    def _calculate_efficiency_rating(
+        self, 
+        cost_per_user: float, 
+        avg_cost_per_user_company: float
+    ) -> EfficiencyRating:
+        """
+        Calcule le rating d'efficacité basé sur la comparaison avec la moyenne.
+        
+        Args:
+            cost_per_user: Coût par utilisateur de l'outil
+            avg_cost_per_user_company: Coût moyen par utilisateur de l'entreprise
+            
+        Returns:
+            EfficiencyRating: Rating d'efficacité
+        """
+        if avg_cost_per_user_company == 0:
+            # Si pas de moyenne disponible, retourner "average"
+            return EfficiencyRating.AVERAGE
+        
+        ratio = cost_per_user / avg_cost_per_user_company
+        
+        if ratio < 0.5:
+            return EfficiencyRating.EXCELLENT
+        elif ratio < 0.8:
+            return EfficiencyRating.GOOD
+        elif ratio <= 1.2:
+            return EfficiencyRating.AVERAGE
+        else:
+            return EfficiencyRating.LOW
