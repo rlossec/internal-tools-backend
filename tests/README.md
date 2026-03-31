@@ -1,150 +1,150 @@
 # Tests
 
-Ce dossier contient tous les tests de l'application. La structure des tests suit la même organisation que le code de l'application dans `app/`.
+This folder contains all application tests. The test layout mirrors the `app/` package structure.
 
 ## Structure
 
 ```
 tests/
-├── conftest.py           # Fixtures partagées pour tous les tests
-├── router/               # Tests pour les endpoints
-│   └── tool/             # Tests pour les endpoints /tools
-└── README.md             # Ce fichier
+├── conftest.py           # Shared fixtures for all tests
+├── router/               # Endpoint tests
+│   └── tool/             # Tests for /tools endpoints
+└── README.md             # This file
 ```
 
-## Fixtures partagées
+## Shared fixtures
 
-Les fixtures sont définies dans `conftest.py` à la racine du dossier `tests/` et sont disponibles pour tous les tests :
+Fixtures are defined in `conftest.py` at the `tests/` root and are available to every test:
 
-### Fixtures de base de données
+### Database fixtures
 
-- **`db_session`** : Session de base de données de test (SQLite en mémoire)
-  - Scope: `function` (une nouvelle session par test)
-  - Crée et supprime automatiquement les tables avant/après chaque test
-  - Garantit l'isolation complète entre les tests
+- **`db_session`**: Test database session (in-memory SQLite)
+  - Scope: `function` (new session per test)
+  - Creates and drops tables automatically before/after each test
+  - Ensures full isolation between tests
 
-### Fixtures de données
+### Data fixtures
 
-- **`test_categories`** : Crée 5 catégories de test
+- **`test_categories`**: Creates 5 test categories
 
   - Development, Design, Marketing, Operations, Finance
 
-- **`test_tools`** : Crée 5 outils de test avec différentes caractéristiques
-  - Voir la section [Données de test](#données-de-test) ci-dessous
-- **`test_user`** : Crée un utilisateur de test pour les logs d'utilisation
-  - Utilisé pour tester les métriques d'utilisation des outils
-- **`test_usage_logs`** : Crée des logs d'utilisation de test
-  - 5 logs avec différentes dates (récents et anciens)
-  - Utilisé pour tester le calcul des métriques d'utilisation
+- **`test_tools`**: Creates 5 test tools with different attributes
+  - See [Test data](#test-data) below
+- **`test_user`**: Creates a test user for usage logs
+  - Used to exercise tool usage metrics
+- **`test_usage_logs`**: Creates sample usage logs
+  - 5 logs with different dates (recent and older)
+  - Used to test usage metric calculations
 
-### Fixtures d'application
+### Application fixtures
 
-- **`client`** : Client FastAPI de test
-  - Permet d'effectuer des requêtes HTTP vers l'application
-  - Les dépendances FastAPI sont surchargées pour utiliser la base de données de test
+- **`client`**: FastAPI test client
+  - Sends HTTP requests to the app
+  - FastAPI dependencies are overridden to use the test database
 
-## Données de test
+## Test data
 
-Les fixtures créent 5 outils de test avec différentes caractéristiques pour couvrir tous les scénarios de test :
+The fixtures create five tools with varied attributes to cover test scenarios:
 
 1. **GitHub**
 
-   - Catégorie: Development
-   - Département: Engineering
-   - Statut: active
-   - Coût: 50€
-   - Vendeur: GitHub Inc.
+   - Category: Development
+   - Department: Engineering
+   - Status: active
+   - Cost: €50
+   - Vendor: GitHub Inc.
 
 2. **Slack**
 
-   - Catégorie: Design
-   - Département: Marketing
-   - Statut: active
-   - Coût: 75€
-   - Vendeur: Slack Technologies
+   - Category: Design
+   - Department: Marketing
+   - Status: active
+   - Cost: €75
+   - Vendor: Slack Technologies
 
 3. **Jira**
 
-   - Catégorie: Marketing
-   - Département: Engineering
-   - Statut: trial
-   - Coût: 100€
-   - Vendeur: Atlassian
+   - Category: Marketing
+   - Department: Engineering
+   - Status: trial
+   - Cost: €100
+   - Vendor: Atlassian
 
 4. **Figma**
 
-   - Catégorie: Operations
-   - Département: Design
-   - Statut: active
-   - Coût: 30€
-   - Vendeur: Figma Inc.
+   - Category: Operations
+   - Department: Design
+   - Status: active
+   - Cost: €30
+   - Vendor: Figma Inc.
 
 5. **Deprecated Tool**
-   - Catégorie: Finance
-   - Département: Operations
-   - Statut: deprecated
-   - Coût: 20€
-   - Vendeur: Old Vendor
+   - Category: Finance
+   - Department: Operations
+   - Status: deprecated
+   - Cost: €20
+   - Vendor: Old Vendor
 
-Ces données permettent de tester tous les scénarios de filtrage, tri, validation et cas limites.
+These records support filtering, sorting, validation, and edge-case tests.
 
-## Exécution des tests
+## Running tests
 
-### Tous les tests
+### All tests
 
 ```bash
 pytest
 ```
 
-### Tests avec sortie détaillée
+### Verbose output
 
 ```bash
 pytest -v
 ```
 
-### Tests avec couverture de code
+### Code coverage
 
 ```bash
 pytest --cov=app --cov-report=html
 ```
 
-### Tests spécifiques
+### Specific tests
 
 ```bash
-# Tous les tests d'un module
+# All tests in a module
 pytest tests/router/tool/
 
-# Un fichier de test spécifique
+# A single test file
 pytest tests/router/tool/test_list_tool.py
 
-# Un test spécifique
+# A single test
 pytest tests/router/tool/test_list_tool.py::TestGetToolsEndpoint::test_get_tools_without_filters
 ```
 
-## Notes importantes
+## Important notes
 
-### Isolation des tests
+### Test isolation
 
-- Les tests utilisent une base de données SQLite en mémoire pour l'isolation complète
-- Chaque test a sa propre session de base de données (fixture `db_session` avec scope `function`)
-- Les fixtures sont automatiquement nettoyées après chaque test
-- Aucun test ne peut affecter un autre test
+- Tests use an in-memory SQLite database for isolation
+- Each test gets its own DB session (`db_session`, scope `function`)
+- Fixtures are cleaned up after each test
+- Tests cannot affect one another
 
-### Surcharge des dépendances
+### Dependency overrides
 
-- Les dépendances FastAPI sont surchargées pour utiliser la base de données de test
-- Cela permet de tester les endpoints sans affecter la base de données de développement
-- Voir `conftest.py` pour les détails d'implémentation
+- FastAPI dependencies are overridden to use the test database
+- Endpoints can be tested without touching the development database
+- See `conftest.py` for implementation details
 
-### Structure des tests
+### Test organization
 
-- Chaque module de router a son propre dossier dans `tests/router/`
-- Chaque endpoint a son propre fichier de test (ex: `test_list_tool.py`, `test_get_tool.py`)
-- Les tests suivent la même structure que le code de l'application
-- Utilisation de `@pytest.mark.parametrize` pour tester plusieurs combinaisons efficacement
+- Each router module has its own folder under `tests/router/`
+- Each endpoint has its own test file (e.g. `test_list_tool.py`, `test_get_tool.py`)
+- Tests mirror the application layout
+- `@pytest.mark.parametrize` is used to cover many combinations efficiently
 
-### Tests paramétrés
+### Parametrized tests
 
-Les tests utilisent `@pytest.mark.parametrize` pour éviter la duplication et tester de nombreuses combinaisons
+Tests use `@pytest.mark.parametrize` to avoid duplication and cover many combinations.
 
-Chaque combinaison est exécutée comme un test séparé, facilitant l'identification des problèmes.
+Each combination runs as its own test, which makes failures easier to pinpoint.
