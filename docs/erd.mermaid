@@ -1,0 +1,89 @@
+erDiagram
+    categories ||--o{ tools : "a"
+    tools ||--o{ user_tool_access : "a"
+    tools ||--o{ access_requests : "demande"
+    tools ||--o{ usage_logs : "utilise"
+    tools ||--o{ cost_tracking : "coûte"
+    users ||--o{ user_tool_access : "a accès"
+    users ||--o{ access_requests : "demande"
+    users ||--o{ usage_logs : "utilise"
+    users ||--o{ user_tool_access : "accorde"
+    users ||--o{ user_tool_access : "révoque"
+    users ||--o{ access_requests : "traite"
+
+    categories {
+        SERIAL id PK
+        VARCHAR_50 name UK "NOT NULL"
+        TEXT description
+        VARCHAR_7 color_hex "DEFAULT '#6366f1'"
+        TIMESTAMP created_at
+    }
+
+    tools {
+        SERIAL id PK
+        VARCHAR_100 name "NOT NULL"
+        TEXT description
+        VARCHAR_100 vendor
+        VARCHAR_255 website_url
+        INTEGER category_id FK "NOT NULL"
+        DECIMAL_10_2 monthly_cost "NOT NULL, >= 0"
+        INTEGER active_users_count "NOT NULL, DEFAULT 0, >= 0"
+        department_type owner_department "NOT NULL"
+        tool_status_type status "DEFAULT 'active'"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at "trigger"
+    }
+
+    users {
+        SERIAL id PK
+        VARCHAR_100 name "NOT NULL"
+        VARCHAR_150 email UK "NOT NULL"
+        department_type department "NOT NULL"
+        user_role_type role "DEFAULT 'employee'"
+        user_status_type status "DEFAULT 'active'"
+        DATE hire_date
+        TIMESTAMP created_at
+        TIMESTAMP updated_at "trigger"
+    }
+
+    user_tool_access {
+        SERIAL id PK
+        INTEGER user_id FK "NOT NULL, CASCADE"
+        INTEGER tool_id FK "NOT NULL, CASCADE"
+        TIMESTAMP granted_at "DEFAULT CURRENT_TIMESTAMP"
+        INTEGER granted_by FK "NOT NULL, RESTRICT"
+        TIMESTAMP revoked_at
+        INTEGER revoked_by FK "SET NULL"
+        access_status_type status "DEFAULT 'active'"
+    }
+
+    access_requests {
+        SERIAL id PK
+        INTEGER user_id FK "NOT NULL, CASCADE"
+        INTEGER tool_id FK "NOT NULL, CASCADE"
+        TEXT business_justification "NOT NULL"
+        request_status_type status "DEFAULT 'pending'"
+        TIMESTAMP requested_at "DEFAULT CURRENT_TIMESTAMP"
+        TIMESTAMP processed_at
+        INTEGER processed_by FK "SET NULL"
+        TEXT processing_notes
+    }
+
+    usage_logs {
+        SERIAL id PK
+        INTEGER user_id FK "NOT NULL, CASCADE"
+        INTEGER tool_id FK "NOT NULL, CASCADE"
+        DATE session_date "NOT NULL"
+        INTEGER usage_minutes "DEFAULT 0"
+        INTEGER actions_count "DEFAULT 0"
+        TIMESTAMP created_at
+    }
+
+    cost_tracking {
+        SERIAL id PK
+        INTEGER tool_id FK "NOT NULL, CASCADE"
+        DATE month_year "NOT NULL, UNIQUE(tool_id, month_year)"
+        DECIMAL_10_2 total_monthly_cost "NOT NULL, >= 0"
+        INTEGER active_users_count "NOT NULL, DEFAULT 0, >= 0"
+        TIMESTAMP created_at
+    }
