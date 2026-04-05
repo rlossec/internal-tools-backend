@@ -1,8 +1,8 @@
 # Department Cost
 
-Ce document analyse les jointures et requêtes nécessaires pour implémenter l'endpoint `GET /api/analytics/department-costs`.
+This document analyzes the joins and queries required to implement the `GET /api/analytics/department-costs` endpoint.
 
-## Données nécessaires
+## Required data
 
 ```bash
 {
@@ -32,40 +32,40 @@ Ce document analyse les jointures et requêtes nécessaires pour implémenter l'
 }
 ```
 
-## Jointures nécessaires
+## Required joins
 
-### Modèles de données impliqués
+### Data models involved
 
-Les requêtes utilisent les relations entre ces tables :
+Queries use relationships between these tables:
 
-- **`tools`** : Outils disponibles avec leur département propriétaire (`owner_department`)
-- **`cost_tracking`** : Table de suivi des coûts mensuels par outil, contenant `total_monthly_cost` et `active_users_count`
+- **`tools`**: Available tools with their owning department (`owner_department`)
+- **`cost_tracking`**: Monthly cost tracking per tool, containing `total_monthly_cost` and `active_users_count`
 
-### Choix de conception : `User.department` vs `Tool.owner_department`
+### Design choice: `User.department` vs `Tool.owner_department`
 
-**Décision : Utiliser `Tool.owner_department` avec `CostTracking`**
+**Decision: Use `Tool.owner_department` with `CostTracking`**
 
-#### Modèle de coût : Utilisation de `CostTracking`
+#### Cost model: using `CostTracking`
 
-**Important** : Nous utilisons `CostTracking.total_monthly_cost` qui représente le **coût total mensuel pour l'entreprise** pour un outil donné.
+**Important**: We use `CostTracking.total_monthly_cost`, which represents the **total monthly cost to the company** for a given tool.
 
-- **`Tool.monthly_cost`** : Coût mensuel unitaire par utilisateur de l'outil (ex: Slack à 8€/utilisateur/mois)
-- **`CostTracking.total_monthly_cost`** : Coût mensuel total pour l'entreprise = `monthly_cost × active_users_count`
-- **`CostTracking.active_users_count`** : Nombre total d'utilisateurs actifs (déjà calculé dans `CostTracking`)
+- **`Tool.monthly_cost`**: Per-user monthly cost for the tool (e.g. Slack at €8/user/month)
+- **`CostTracking.total_monthly_cost`**: Total monthly cost to the company = `monthly_cost × active_users_count`
+- **`CostTracking.active_users_count`**: Total active users (already stored in `CostTracking`)
 
-#### Exemple illustratif
+#### Illustrative example
 
-Un outil "Slack Pro" :
+A "Slack Pro" tool:
 
-- Coût unitaire : **8€/utilisateur/mois**
-- 8 utilisateurs actifs au total
-- **Coût total entreprise** : 8 × 8€ = 64€ (stocké dans `CostTracking.total_monthly_cost`)
-- Propriétaire : Département **Engineering** (`Tool.owner_department`)
+- Unit cost: **€8/user/month**
+- 8 active users in total
+- **Total company cost**: 8 × €8 = €64 (stored in `CostTracking.total_monthly_cost`)
+- Owner: **Engineering** department (`Tool.owner_department`)
 
-→ Engineering compte **64€** dans son `total_cost` pour Slack.
+→ Engineering counts **€64** toward its `total_cost` for Slack.
 
-#### Jointures utilisées
+#### Joins used
 
-1. **`users` → `user_tool_access` (INNER JOIN sur `users.id = user_tool_access.user_id`)** : Lie chaque utilisateur à ses accès aux outils
+1. **`users` → `user_tool_access` (INNER JOIN on `users.id = user_tool_access.user_id`)**: Links each user to their tool access records
 
-2. **`user_tool_access` → `tools` (INNER JOIN sur `user_tool_access.tool_id = tools.id`)** : Lie chaque accès à l'outil correspondant pour accéder au `monthly_cost`
+2. **`user_tool_access` → `tools` (INNER JOIN on `user_tool_access.tool_id = tools.id`)**: Links each access row to the corresponding tool to read `monthly_cost`

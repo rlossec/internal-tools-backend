@@ -1,6 +1,6 @@
 # Tests
 
-Ce dossier contient tous les tests de l'application. La structure des tests suit la même organisation que le code de l'application dans `app/`.
+This folder contains all application tests. The test layout mirrors the `app/` package structure.
 
 ## Structure
 
@@ -11,23 +11,27 @@ tests/
 │   ├── __init__.py                # FactoryManager + fixture
 │   ├── base.py                    # BaseFactory
 │   ├── category_factory.py
+│   ├── cost_tracking_factory.py
 │   ├── tool_factory.py
 │   ├── user_factory.py
 │   ├── user_tool_access_factory.py
 │   └── usage_log_factory.py
 ├── fixtures/                      # Fixtures spécifiques par domaine
 │   ├── __init__.py
-│   ├── data.py                   # Fixtures de données (catégories, outils, etc.)
-│   └── analytics.py              # Fixtures spécifiques aux analytics
+│   ├── data.py                    # Fixtures de données (catégories, outils, etc.)
+│   └── department/              # Fixtures départements (données + services)
+│       ├── data.py
+│       └── services.py
 ├── repositories/                  # Tests des repositories
-│   └── analytics_repository/
-│       └── test_analytics_repository.py
+│   └── department_repository/
+│       └── test_get_department_costs_data.py
 ├── services/                      # Tests des services
-│   └── analytics_service/
-│       └── test_analytics_service.py
+│   └── department/
+│       └── test_department_service.py
 ├── router/                        # Tests pour les endpoints
-│   └── tool/                     # Tests pour les endpoints /tools
-└── README.md                     # Ce fichier
+│   ├── analytics/               # Tests des routes analytics
+│   └── tool/                    # Tests pour les endpoints /tools
+└── README.md                      # Ce fichier
 ```
 
 ## Organisation des fixtures
@@ -45,37 +49,33 @@ Les fixtures définies dans `conftest.py` à la racine sont disponibles pour **t
 
 Les fixtures spécifiques à un domaine fonctionnel sont organisées dans le dossier `fixtures/` :
 
-- **`tests/fixtures/analytics.py`** : Fixtures spécifiques aux tests analytics
-  - Utilisateurs multiples pour les tests analytics
-  - Accès utilisateur-outil pour les tests analytics
-  - Repository et service analytics
+- **`tests/fixtures/department/data.py`** et **`tests/fixtures/department/services.py`** : données et services pour les tests liés aux départements (coûts, agrégations, etc.)
 
-Ces fixtures sont chargées automatiquement via `pytest_plugins` dans le `conftest.py` principal.
+Ces modules sont chargés automatiquement via `pytest_plugins` dans le `conftest.py` principal.
 
 ## Fixtures communes disponibles
 
-### Fixtures de base de données
+### Database fixtures
 
-- **`db_session`** : Session de base de données de test (SQLite en mémoire)
-  - Scope: `function` (une nouvelle session par test)
-  - Crée et supprime automatiquement les tables avant/après chaque test
-  - Garantit l'isolation complète entre les tests
+- **`db_session`**: Test database session (in-memory SQLite)
+  - Scope: `function` (new session per test)
+  - Creates and drops tables automatically before/after each test
+  - Ensures full isolation between tests
 
-### Fixtures de données
+### Data fixtures
 
-- **`test_categories`** : Crée 5 catégories de test
-
+- **`test_categories`**: Creates 5 test categories
   - Development, Design, Marketing, Operations, Finance
 
-- **`test_tools`** : Crée 5 outils de test avec différentes caractéristiques
-  - Voir la section [Données de test](#données-de-test) ci-dessous
-- **`test_user`** : Crée un utilisateur de test pour les logs d'utilisation
-  - Utilisé pour tester les métriques d'utilisation des outils
-- **`test_usage_logs`** : Crée des logs d'utilisation de test
-  - 5 logs avec différentes dates (récents et anciens)
-  - Utilisé pour tester le calcul des métriques d'utilisation
+- **`test_tools`**: Creates 5 test tools with different attributes
+  - See [Test data](#test-data) below
+- **`test_user`**: Creates a test user for usage logs
+  - Used to exercise tool usage metrics
+- **`test_usage_logs`**: Creates sample usage logs
+  - 5 logs with different dates (recent and older)
+  - Used to test usage metric calculations
 
-### Fixtures d'application
+### Application fixtures
 
 - **`tool_repository`** : Repository pour les outils
 - **`tool_service`** : Service pour les outils
@@ -83,25 +83,15 @@ Ces fixtures sont chargées automatiquement via `pytest_plugins` dans le `confte
   - Permet d'effectuer des requêtes HTTP vers l'application
   - Les dépendances FastAPI sont surchargées pour utiliser la base de données de test
 
-## Fixtures spécifiques - Analytics
+## Fixtures spécifiques - Départements
 
-Les fixtures spécifiques aux tests analytics sont définies dans `tests/fixtures/analytics.py` et chargées automatiquement via `pytest_plugins` dans le `conftest.py` principal :
+Les fixtures liées aux départements sont définies sous `tests/fixtures/department/` et chargées via `pytest_plugins` dans le `conftest.py` principal :
 
-- **`test_users_for_analytics`** : Crée 8 utilisateurs dans différents départements
-  - 1 admin (Engineering)
-  - 3 utilisateurs Engineering (2 actifs, 1 inactif)
-  - 2 utilisateurs Sales (actifs)
-  - 1 utilisateur Marketing (actif)
-  - 1 utilisateur HR (actif, sans outils)
-- **`test_user_tool_access_for_analytics`** : Crée des accès utilisateur-outil
-
-  - Engineering : accès à GitHub et Jira
-  - Sales : accès à Slack
-  - Marketing : accès à Slack et Figma
-  - Inclut des accès révoqués et inactifs pour tester le filtrage
-
-- **`analytics_repository`** : Repository analytics de test
-- **`analytics_service`** : Service analytics de test
+- **`test_users_for_department_computations`** : crée plusieurs utilisateurs dans différents départements (admin, Engineering, Sales, Marketing, HR, etc.)
+- **`test_user_tool_access_for_department_computations`** : accès utilisateur-outil pour les scénarios de coûts par département
+- **`test_cost_tracking_for_department_computations`** : données de suivi des coûts pour ces tests
+- **`department_repository`** : `DepartmentRepository` de test
+- **`department_service`** : service départements de test
 
 ## Factories pour créer des données de test
 
@@ -147,29 +137,25 @@ def test_example(factories):
 ### Exemple complet
 
 ```python
-def test_analytics_with_factories(factories):
-    """Test analytics en créant des données avec factories."""
-    # Créer catégories
+def test_department_costs_with_factories(factories):
+    """Exemple : données créées via factories puis appel au repository."""
     dev_category = factories.category.create_development()
     design_category = factories.category.create_design()
 
-    # Créer outils
     github = factories.tool.create_github(category_id=dev_category.id)
     slack = factories.tool.create_slack(category_id=design_category.id)
 
-    # Créer utilisateurs
     admin = factories.user.create_admin()
     engineer1 = factories.user.create_engineer(name="Engineer 1")
     engineer2 = factories.user.create_engineer(name="Engineer 2")
 
-    # Créer accès
     factories.user_tool_access.create_active(engineer1.id, github.id, admin.id)
     factories.user_tool_access.create_active(engineer2.id, github.id, admin.id)
 
-    factories.commit()  # Tout est prêt pour les tests
+    factories.commit()
 
-    # Tester maintenant...
-    repository = AnalyticsRepository(session=factories.db)
+    from app.repositories import DepartmentRepository
+    repository = DepartmentRepository(session=factories.db)
     results = repository.get_department_costs_data()
     # ...
 ```
@@ -178,106 +164,103 @@ Voir `tests/factories/test_factories_example.py` pour plus d'exemples.
 
 ## Données de test
 
-Les fixtures créent 5 outils de test avec différentes caractéristiques pour couvrir tous les scénarios de test :
+The fixtures create five tools with varied attributes to cover test scenarios:
 
 1. **GitHub**
-
-   - Catégorie: Development
-   - Département: Engineering
-   - Statut: active
-   - Coût: 50€
-   - Vendeur: GitHub Inc.
+   - Category: Development
+   - Department: Engineering
+   - Status: active
+   - Cost: €50
+   - Vendor: GitHub Inc.
 
 2. **Slack**
-
-   - Catégorie: Design
-   - Département: Marketing
-   - Statut: active
-   - Coût: 75€
-   - Vendeur: Slack Technologies
+   - Category: Design
+   - Department: Marketing
+   - Status: active
+   - Cost: €75
+   - Vendor: Slack Technologies
 
 3. **Jira**
-
-   - Catégorie: Marketing
-   - Département: Engineering
-   - Statut: trial
-   - Coût: 100€
-   - Vendeur: Atlassian
+   - Category: Marketing
+   - Department: Engineering
+   - Status: trial
+   - Cost: €100
+   - Vendor: Atlassian
 
 4. **Figma**
-
-   - Catégorie: Operations
-   - Département: Design
-   - Statut: active
-   - Coût: 30€
-   - Vendeur: Figma Inc.
+   - Category: Operations
+   - Department: Design
+   - Status: active
+   - Cost: €30
+   - Vendor: Figma Inc.
 
 5. **Deprecated Tool**
-   - Catégorie: Finance
-   - Département: Operations
-   - Statut: deprecated
-   - Coût: 20€
-   - Vendeur: Old Vendor
+   - Category: Finance
+   - Department: Operations
+   - Status: deprecated
+   - Cost: €20
+   - Vendor: Old Vendor
 
-Ces données permettent de tester tous les scénarios de filtrage, tri, validation et cas limites.
+These records support filtering, sorting, validation, and edge-case tests.
 
-## Exécution des tests
+## Running tests
 
-### Tous les tests
+### All tests
 
 ```bash
 pytest
 ```
 
-### Tests avec sortie détaillée
+### Verbose output
 
 ```bash
 pytest -v
 ```
 
-### Tests avec couverture de code
+### Code coverage
 
 ```bash
 pytest --cov=app --cov-report=html
 ```
 
-### Tests spécifiques
+### Specific tests
 
 ```bash
-# Tous les tests d'un module
+# All tests in a module
 pytest tests/router/tool/
+pytest tests/router/analytics/
 
-# Un fichier de test spécifique
+# A single test file
 pytest tests/router/tool/test_list_tool.py
 
-# Un test spécifique
+# A single test
 pytest tests/router/tool/test_list_tool.py::TestGetToolsEndpoint::test_get_tools_without_filters
 ```
 
-## Notes importantes
+## Important notes
 
-### Isolation des tests
+### Test isolation
 
-- Les tests utilisent une base de données SQLite en mémoire pour l'isolation complète
-- Chaque test a sa propre session de base de données (fixture `db_session` avec scope `function`)
-- Les fixtures sont automatiquement nettoyées après chaque test
-- Aucun test ne peut affecter un autre test
+- Tests use an in-memory SQLite database for isolation
+- Each test gets its own DB session (`db_session`, scope `function`)
+- Fixtures are cleaned up after each test
+- Tests cannot affect one another
 
-### Surcharge des dépendances
+### Dependency overrides
 
-- Les dépendances FastAPI sont surchargées pour utiliser la base de données de test
-- Cela permet de tester les endpoints sans affecter la base de données de développement
-- Voir `conftest.py` pour les détails d'implémentation
+- FastAPI dependencies are overridden to use the test database
+- Endpoints can be tested without touching the development database
+- See `conftest.py` for implementation details
 
-### Structure des tests
+### Test organization
 
-- Chaque module de router a son propre dossier dans `tests/router/`
-- Chaque endpoint a son propre fichier de test (ex: `test_list_tool.py`, `test_get_tool.py`)
-- Les tests suivent la même structure que le code de l'application
-- Utilisation de `@pytest.mark.parametrize` pour tester plusieurs combinaisons efficacement
+- Each router module has its own folder under `tests/router/`
+- Each endpoint has its own test file (e.g. `test_list_tool.py`, `test_get_tool.py`)
+- Tests mirror the application layout
+- `@pytest.mark.parametrize` is used to cover many combinations efficiently
 
-### Tests paramétrés
+### Parametrized tests
 
-Les tests utilisent `@pytest.mark.parametrize` pour éviter la duplication et tester de nombreuses combinaisons
+Tests use `@pytest.mark.parametrize` to avoid duplication and cover many combinations.
 
-Chaque combinaison est exécutée comme un test séparé, facilitant l'identification des problèmes.
+Each combination runs as its own test, which makes failures easier to pinpoint.

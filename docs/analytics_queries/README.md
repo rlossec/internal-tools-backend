@@ -1,24 +1,24 @@
-# Endpoints Analytics - Guide des Requêtes
+# Analytics endpoints — Query guide
 
-Ce dossier contient les analyses détaillées des endpoints analytics de l'application.
+This folder contains detailed analyses of the application’s analytics endpoints.
 
-## Vue d'ensemble
+## Overview
 
-| Endpoint                 | Objectif                                | Tables principales             | Documentation                                                      | Impl |
-| ------------------------ | --------------------------------------- | ------------------------------ | ------------------------------------------------------------------ | ---- |
-| **`/department-costs`**  | Coûts par département                   | users, user_tool_access, tools | [`1_department_cost.md`](./1_department_cost.md)                   | ✅   |
-| **`/expensive-tools`**   | Outils les plus coûteux par utilisateur | tools, user_tool_access, users | [`2_expensive_tools_analysis.md`](./2_expensive_tools_analysis.md) | ❌   |
-| **`/tools-by-category`** | Répartition par catégories              | tools, categories              | [`3_tools_by_category.md`](./3_tools_by_category.md)               | ❌   |
-| **`/low-usage-tools`**   | Outils sous-utilisés                    | tools                          | [`4_low-usage-tools.md`](./4_low-usage-tools.md)                   | ❌   |
-| **`/vendor-summary`**    | Analyse fournisseurs                    | tools                          | [`5_vendor-summary.md`](./5_vendor-summary.md)                     | ❌   |
+| Endpoint                 | Purpose                                      | Main tables                    | Documentation                                                      | Impl |
+| ------------------------ | -------------------------------------------- | ------------------------------ | ------------------------------------------------------------------ | ---- |
+| **`/department-costs`**  | Costs by department                          | users, user_tool_access, tools | [`1_department_cost.md`](./1_department_cost.md)                   | ✅   |
+| **`/expensive-tools`**   | Most expensive tools per user                | tools, user_tool_access, users | [`2_expensive_tools_analysis.md`](./2_expensive_tools_analysis.md) | ❌   |
+| **`/tools-by-category`** | Breakdown by category                        | tools, categories              | [`3_tools_by_category.md`](./3_tools_by_category.md)               | ❌   |
+| **`/low-usage-tools`**   | Underused tools                              | tools                          | [`4_low-usage-tools.md`](./4_low-usage-tools.md)                   | ❌   |
+| **`/vendor-summary`**    | Vendor analysis                              | tools                          | [`5_vendor-summary.md`](./5_vendor-summary.md)                     | ❌   |
 
-## Endpoints disponibles
+## Available endpoints
 
 ### 1. Department Costs
 
-**Objectif** : Analyser la répartition des coûts des outils par département.
+**Purpose**: Analyze how tool costs are distributed across departments.
 
-**Exemples** :
+**Examples**:
 
 ```
 GET /api/analytics/department-costs
@@ -26,7 +26,7 @@ GET /api/analytics/department-costs?sort_by=department&order=asc
 GET /api/analytics/department-costs?sort_by=total_cost&order=desc
 ```
 
-**Exemple de Réponse** :
+**Sample response**:
 
 ```json
 {
@@ -56,26 +56,26 @@ GET /api/analytics/department-costs?sort_by=total_cost&order=desc
 }
 ```
 
-**Tables impliquées** :
+**Tables involved**:
 
-- `users` : Utilisateurs avec leur département
-- `user_tool_access` : Table de jonction (many-to-many)
-- `tools` : Outils avec leur coût mensuel
+- `users`: Users and their department
+- `user_tool_access`: Junction table (many-to-many)
+- `tools`: Tools and their monthly cost
 
-**📖 Analyse détaillée** : Voir [`1_department_cost_queries.md`](./1_department_cost.md)
+**📖 Detailed analysis**: See [`1_department_cost.md`](./1_department_cost.md)
 
 ### 2. Expensive Tools
 
-**Objectif** : Identifier les outils les plus coûteux par utilisateur et analyser leur efficacité.
+**Purpose**: Identify the most expensive tools per user and analyze their efficiency.
 
-**Exemples** :
+**Examples**:
 
 ```
 GET /api/analytics/expensive-tools?limit=10
 GET /api/analytics/expensive-tools?min_cost=50&limit=5
 ```
 
-**Réponse** :
+**Response**:
 
 ```json
 {
@@ -99,25 +99,25 @@ GET /api/analytics/expensive-tools?min_cost=50&limit=5
 }
 ```
 
-**Tables impliquées** :
+**Tables involved**:
 
-- `tools` : Outils avec leur coût et nombre d'utilisateurs
-- `user_tool_access` (optionnel) : Pour calcul dynamique du nombre d'utilisateurs
-- `users` (optionnel) : Pour vérifier le statut des utilisateurs
+- `tools`: Tools with cost and user counts
+- `user_tool_access` (optional): For dynamic active user counts
+- `users` (optional): To verify user status
 
-**📖 Analyse détaillée** : Voir [`2_expensive_tools_analysis.md`](./2_expensive_tools_analysis.md)
+**📖 Detailed analysis**: See [`2_expensive_tools_analysis.md`](./2_expensive_tools_analysis.md)
 
 ### 3. Tool by Category
 
-**Objectif** : Analyser la répartition des outils et coûts par catégorie.
+**Purpose**: Analyze tool and cost distribution by category.
 
-**Exemples** :
+**Examples**:
 
 ```
 GET /api/analytics/tools-by-category
 ```
 
-**Réponse** :
+**Response**:
 
 ```json
 {
@@ -146,25 +146,25 @@ GET /api/analytics/tools-by-category
 }
 ```
 
-**Tables impliquées** :
+**Tables involved**:
 
-- `tools` : Outils avec leur coût, nombre d'utilisateurs et catégorie
-- `categories` : Catégories d'outils
+- `tools`: Tools with cost, user count, and category
+- `categories`: Tool categories
 
-**📖 Analyse détaillée** : Voir [`3_tools_by_category.md`](./3_tools_by_category.md)
+**📖 Detailed analysis**: See [`3_tools_by_category.md`](./3_tools_by_category.md)
 
 ### 4. Low Usage Tool
 
-**Objectif** : Identifier les outils sous-utilisés et les opportunités d'économies.
+**Purpose**: Identify underused tools and savings opportunities.
 
-**Exemples** :
+**Examples**:
 
 ```
 GET /api/analytics/low-usage-tools
 GET /api/analytics/low-usage-tools?max_users=5
 ```
 
-**Réponse** :
+**Response**:
 
 ```json
 {
@@ -189,23 +189,23 @@ GET /api/analytics/low-usage-tools?max_users=5
 }
 ```
 
-**Tables impliquées** :
+**Tables involved**:
 
-- `tools` : Outils avec leur coût et nombre d'utilisateurs actifs
+- `tools`: Tools with cost and active user count
 
-**📖 Analyse détaillée** : Voir [`4_low-usage-tools.md`](./4_low-usage-tools.md)
+**📖 Detailed analysis**: See [`4_low-usage-tools.md`](./4_low-usage-tools.md)
 
 ### 5. Vendor Summary
 
-**Objectif** : Analyser les fournisseurs et optimiser les relations vendors.
+**Purpose**: Analyze vendors and optimize vendor relationships.
 
-**Exemples** :
+**Examples**:
 
 ```
 GET /api/analytics/vendor-summary
 ```
 
-**Réponse** :
+**Response**:
 
 ```json
 {
@@ -228,8 +228,8 @@ GET /api/analytics/vendor-summary
 }
 ```
 
-**Tables impliquées** :
+**Tables involved**:
 
-- `tools` : Outils avec leur fournisseur, coût et départements
+- `tools`: Tools with vendor, cost, and departments
 
-**📖 Analyse détaillée** : Voir [`5_vendor-summary.md`](./5_vendor-summary.md)
+**📖 Detailed analysis**: See [`5_vendor-summary.md`](./5_vendor-summary.md)
