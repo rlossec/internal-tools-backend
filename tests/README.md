@@ -6,15 +6,53 @@ Ce dossier contient tous les tests de l'application. La structure des tests suit
 
 ```
 tests/
-├── conftest.py           # Fixtures partagées pour tous les tests
-├── router/               # Tests pour les endpoints
-│   └── tool/             # Tests pour les endpoints /tools
-└── README.md             # Ce fichier
+├── conftest.py                    # Fixtures communes partagées
+├── factories/                     # Factories pour créer des données de test
+│   ├── __init__.py                # FactoryManager + fixture
+│   ├── base.py                    # BaseFactory
+│   ├── category_factory.py
+│   ├── tool_factory.py
+│   ├── user_factory.py
+│   ├── user_tool_access_factory.py
+│   └── usage_log_factory.py
+├── fixtures/                      # Fixtures spécifiques par domaine
+│   ├── __init__.py
+│   ├── data.py                   # Fixtures de données (catégories, outils, etc.)
+│   └── analytics.py              # Fixtures spécifiques aux analytics
+├── repositories/                  # Tests des repositories
+│   └── analytics_repository/
+│       └── test_analytics_repository.py
+├── services/                      # Tests des services
+│   └── analytics_service/
+│       └── test_analytics_service.py
+├── router/                        # Tests pour les endpoints
+│   └── tool/                     # Tests pour les endpoints /tools
+└── README.md                     # Ce fichier
 ```
 
-## Fixtures partagées
+## Organisation des fixtures
 
-Les fixtures sont définies dans `conftest.py` à la racine du dossier `tests/` et sont disponibles pour tous les tests :
+### Fixtures communes (`tests/conftest.py`)
+
+Les fixtures définies dans `conftest.py` à la racine sont disponibles pour **tous les tests** et contiennent les éléments communs :
+
+- Configuration de la base de données
+- Données de base (catégories, outils de base)
+- Repositories et services généraux
+- Client FastAPI de test
+
+### Fixtures spécifiques (`tests/fixtures/`)
+
+Les fixtures spécifiques à un domaine fonctionnel sont organisées dans le dossier `fixtures/` :
+
+- **`tests/fixtures/analytics.py`** : Fixtures spécifiques aux tests analytics
+  - Utilisateurs multiples pour les tests analytics
+  - Accès utilisateur-outil pour les tests analytics
+  - Repository et service analytics
+
+Ces fixtures sont chargées automatiquement via `pytest_plugins` dans le `conftest.py` principal.
+
+## Fixtures communes disponibles
 
 ### Fixtures de base de données
 
@@ -39,9 +77,104 @@ Les fixtures sont définies dans `conftest.py` à la racine du dossier `tests/` 
 
 ### Fixtures d'application
 
+- **`tool_repository`** : Repository pour les outils
+- **`tool_service`** : Service pour les outils
 - **`client`** : Client FastAPI de test
   - Permet d'effectuer des requêtes HTTP vers l'application
   - Les dépendances FastAPI sont surchargées pour utiliser la base de données de test
+
+## Fixtures spécifiques - Analytics
+
+Les fixtures spécifiques aux tests analytics sont définies dans `tests/fixtures/analytics.py` et chargées automatiquement via `pytest_plugins` dans le `conftest.py` principal :
+
+- **`test_users_for_analytics`** : Crée 8 utilisateurs dans différents départements
+  - 1 admin (Engineering)
+  - 3 utilisateurs Engineering (2 actifs, 1 inactif)
+  - 2 utilisateurs Sales (actifs)
+  - 1 utilisateur Marketing (actif)
+  - 1 utilisateur HR (actif, sans outils)
+- **`test_user_tool_access_for_analytics`** : Crée des accès utilisateur-outil
+
+  - Engineering : accès à GitHub et Jira
+  - Sales : accès à Slack
+  - Marketing : accès à Slack et Figma
+  - Inclut des accès révoqués et inactifs pour tester le filtrage
+
+- **`analytics_repository`** : Repository analytics de test
+- **`analytics_service`** : Service analytics de test
+
+## Factories pour créer des données de test
+
+Les **factories** permettent de créer facilement des données de test avec des valeurs par défaut intelligentes.
+
+### Fixture `factories`
+
+La fixture `factories` donne accès à un `FactoryManager` qui regroupe toutes les factories disponibles :
+
+```python
+def test_example(factories):
+    # Créer une catégorie
+    category = factories.category.create_development()
+
+    # Créer un outil
+    tool = factories.tool.create_github(category_id=category.id)
+
+    # Créer un utilisateur
+    user = factories.user.create_engineer(name="John")
+
+    # Commiter toutes les créations
+    factories.commit()
+```
+
+### Factories disponibles
+
+- **`factories.category`** : Créer des catégories
+  - `create_development()`, `create_marketing()`, etc.
+  - `create(name="...", description="...")` avec valeurs personnalisées
+- **`factories.tool`** : Créer des outils
+  - `create_github(category_id)`, `create_slack(category_id)`, etc.
+  - `create(category_id, name="...", monthly_cost=...)` avec valeurs personnalisées
+- **`factories.user`** : Créer des utilisateurs
+  - `create_engineer()`, `create_sales()`, `create_admin()`, etc.
+  - `create(name="...", department=...)` avec valeurs personnalisées
+- **`factories.user_tool_access`** : Créer des accès
+  - `create_active(user_id, tool_id, granted_by)`
+  - `grant_access_to_multiple_tools(...)`
+- **`factories.usage_log`** : Créer des logs d'utilisation
+  - `create_recent(user_id, tool_id, days_ago=5)`
+  - `create_old(user_id, tool_id, days_ago=40)`
+
+### Exemple complet
+
+```python
+def test_analytics_with_factories(factories):
+    """Test analytics en créant des données avec factories."""
+    # Créer catégories
+    dev_category = factories.category.create_development()
+    design_category = factories.category.create_design()
+
+    # Créer outils
+    github = factories.tool.create_github(category_id=dev_category.id)
+    slack = factories.tool.create_slack(category_id=design_category.id)
+
+    # Créer utilisateurs
+    admin = factories.user.create_admin()
+    engineer1 = factories.user.create_engineer(name="Engineer 1")
+    engineer2 = factories.user.create_engineer(name="Engineer 2")
+
+    # Créer accès
+    factories.user_tool_access.create_active(engineer1.id, github.id, admin.id)
+    factories.user_tool_access.create_active(engineer2.id, github.id, admin.id)
+
+    factories.commit()  # Tout est prêt pour les tests
+
+    # Tester maintenant...
+    repository = AnalyticsRepository(session=factories.db)
+    results = repository.get_department_costs_data()
+    # ...
+```
+
+Voir `tests/factories/test_factories_example.py` pour plus d'exemples.
 
 ## Données de test
 
