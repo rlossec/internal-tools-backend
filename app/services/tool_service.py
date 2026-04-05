@@ -194,11 +194,13 @@ class ToolService:
             ExpensiveToolsResponse: Réponse avec les outils et l'analyse
         """
         # Construire les filtres pour récupérer les outils
+        # Si limit est fourni, on utilise page=1 pour que la pagination soit appliquée
         filters = ToolFilters(
             min_cost=min_cost,
             sort_by=SortToolField.MONTHLY_COST,
             sort_order=SortOrder.DESC,
-            limit=limit
+            limit=limit,
+            page=1 if limit is not None else None
         )
         
         # Récupérer tous les outils (sans pagination pour l'analyse)
